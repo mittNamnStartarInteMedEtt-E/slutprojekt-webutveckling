@@ -9,17 +9,7 @@ const editor = CodeMirror.fromTextArea(document.getElementById("code-input"), {
 // test program
 
 editor.setValue(
-`; test registers
-mov eax, 0x12345678
-println eax
-mov ax, 0xABCD
-println eax
-mov ah, 0x12
-println eax
-mov al, 0x34
-println eax
-
-; test negative numbers
+`; test negative numbers
 mov eax, 1
 sub eax, 10        ; eax should show -9
 
@@ -30,10 +20,6 @@ add ebx, 1         ; should wrap to 0, overflow flag set
 ; test multiplication overflow
 mov ecx, 65535
 mul ecx, 65535     ; result too large for 32 bits
-
-; test division
-mov edx, 10
-div edx, 2         ; edx should now be 5
 
 ; test memory read/write
 mov edx, 100       ; use address 100
@@ -51,7 +37,7 @@ mov eax, 65280     ; 1111111100000000 in binary
 and eax, 4080      ; eax should be 3840
 or  eax, 15        ; eax should be 3855
 xor eax, 65535     ; eax should be 61680
-not eax
+not eax            ; eax should be -61681
 
 ; test shifts
 mov eax, 1
