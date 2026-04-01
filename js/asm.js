@@ -170,7 +170,7 @@ function preprocessCode(code) {
             return;
         }
 
-        // apply defines BEFORE anything else
+        // apply defines before anything else
         for (const [name, value] of Object.entries(defines)) {
             raw = raw.replace(new RegExp(`\\b${name}\\b`, "gi"), value);
         }
@@ -255,6 +255,7 @@ function loadProgram(code) {
             labels[line.raw.slice(0, -1)] = instrIndex;
         } else {
             lines.push(line);
+            lineMap.push(line.srcLine);  // map EIP to original source line
             instrIndex++;
         }
     });
