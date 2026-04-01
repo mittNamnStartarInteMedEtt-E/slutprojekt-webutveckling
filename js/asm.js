@@ -208,8 +208,6 @@ function preprocessCode(code) {
         }
     });
 
-    parsed.forEach(entry => lineMap.push(entry.srcLine));
-
     return parsed.map(entry => entry.text).join("\n");
 }
 
