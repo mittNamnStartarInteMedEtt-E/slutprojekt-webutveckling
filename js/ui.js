@@ -24,12 +24,12 @@ sub ebx, 92         ; 0, zero flag set
 je .ok              ; jump if zero, should jump
 
 .ok:
-mul eax, 2          ; 184
-mov ecx, eax
-jmp .done
+    mul eax, 2      ; 184
+    mov ecx, eax
+    jmp .done
 
 .done:
-println "done"`
+    println "done"`
 );
 
 // speed slider
@@ -303,7 +303,7 @@ function makeHorizontalResizer(resizer) {
             const leftWidth = e.clientX;
             const rightWidth = totalWidth - leftWidth - 4; // 4px is resizer width
 
-            const clampedLeft = Math.max(460, Math.min(leftWidth, totalWidth - 388));
+            const clampedLeft = Math.max(460, Math.min(leftWidth, totalWidth - 420));
             const clampedRight = totalWidth - clampedLeft - 4;
             
             app.style.gridTemplateColumns = `${clampedLeft}px 4px ${clampedRight}px`;
@@ -332,7 +332,6 @@ function makeVerticalResizer(resizer) {
             const stateTop = stateRect.top - 16; // top padding
             const stateHeight = stateRect.height - 32; // padding top + bottom
             const topHeight = e.clientY - stateTop;
-            const bottomHeight = stateHeight - topHeight - 4;
 
             // clamp values so panels dont get too small
             const clampedTop = Math.max(100, Math.min(topHeight, stateHeight - 104));
