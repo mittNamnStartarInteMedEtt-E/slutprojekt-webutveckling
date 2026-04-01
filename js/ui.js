@@ -9,64 +9,27 @@ const editor = CodeMirror.fromTextArea(document.getElementById("code-input"), {
 // test program
 
 editor.setValue(
-`; test negative numbers
-mov eax, 1
-sub eax, 10        ; eax should show -9
+`%define value 50
 
-; test overflow
-mov ebx, 4294967295
-add ebx, 1         ; should wrap to 0, overflow flag set
+section .data
+x dd 42
+y dd 100
 
-; test multiplication overflow
-mov ecx, 65535
-mul ecx, 65535     ; result too large for 32 bits
+section .text
+mov eax, [x]        ; 42
+add eax, value      ; 92
+mov [0x1000], eax   ; 92 in memory
+mov ebx, [0x1000]   ; 92
+sub ebx, 92         ; 0, zero flag set
+je .ok              ; jump if zero, should jump
 
-; test memory read/write
-mov edx, 100       ; use address 100
-mov [edx], 42      ; write 42 to address 100
-mov esi, [edx]     ; read it back, esi should be 42
+.ok:
+mul eax, 2          ; 184
+mov ecx, eax
+jmp .done
 
-; test stack
-push eax
-push ebx
-pop eax            ; eax should now have ebx's value
-pop ebx            ; ebx should now have eax's original value
-
-; test bitwise
-mov eax, 65280     ; 1111111100000000 in binary
-and eax, 4080      ; eax should be 3840
-or  eax, 15        ; eax should be 3855
-xor eax, 65535     ; eax should be 61680
-not eax            ; eax should be -61681
-
-; test shifts
-mov eax, 1
-shl eax, 3         ; eax = 8
-shr eax, 2         ; eax = 2
-
-; test loop
-mov ecx, 5
-.loop:
-    println ecx
-    loop .loop
-    jmp .end
-
-; test call/ret
-mov eax, 10
-call double
-println eax
-
-jmp .end
-
-double:
-    push ebp
-    mov ebp, esp
-    mul eax, 2
-    pop ebp
-    ret
-
-.end:
-    println "tests complete"`
+.done:
+println "done"`
 );
 
 // speed slider
@@ -93,9 +56,9 @@ function reset() {
 
     cpu.regs.ESP = 1024 * 1024; // stack starts at top of memory
 
-    cpu.flags.ZERO     = false;
-    cpu.flags.CARRY    = false;
-    cpu.flags.SIGN     = false;
+    cpu.flags.ZERO = false;
+    cpu.flags.CARRY = false;
+    cpu.flags.SIGN = false;
     cpu.flags.OVERFLOW = false;
 
     // remove the highlighted line from the editor if there is one

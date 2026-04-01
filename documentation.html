@@ -19,6 +19,8 @@
             <a href="#flags">Flags</a>
             <a href="#memory">Memory</a>
             <a href="#sections">Sections</a>
+            <a href="#data-declarations">Data Declarations</a>
+            <a href="#macros">Macros</a>
             <span class="group"><strong>Instructions</strong></span>
             <a href="#data">Data movement</a>
             <a href="#arithmetic">Arithmetic</a>
@@ -172,42 +174,93 @@
                 <h2>Sections</h2>
                 <p>
                     Sections split your program into named regions.
-                    <span class="keyword">.text</span> holds your instructions and
-                    <span class="keyword">.data</span> holds values that exist before
+                    <span class="keyword">section .text</span> holds your instructions and
+                    <span class="keyword">section .data</span> holds values that exist before
                     your program runs.
                 </p>
-                <p>
-                    Variables in <span class="keyword">.data</span> are declared with a
-                    name, a size keyword, and a value.
-                    <span class="keyword">db</span> is 1 byte,
-                    <span class="keyword">dw</span> is 2 bytes,
-                    <span class="keyword">dd</span> is 4 bytes (32-bit). You then
-                    reference them by name, just like a memory address.
-                </p>
-                <div class="code">
-                    <span class="keyword">section</span> <span class="label">.data</span><br>
-                    <span class="reg">num</span> <span class="keyword">dd</span>
-                    <span class="num">42</span>
-                    <span class="comment">; 32-bit value, starts at some address</span><br>
-                    <span class="reg">message</span> <span class="keyword">db</span>
-                    <span class="num">0x41</span>
-                    <span class="comment">; single byte</span><br>
-                    <br>
-                    <span class="keyword">section</span> <span class="label">.text</span><br>
-                    <span class="keyword">MOV</span> <span class="reg">EAX</span>,
-                    [<span class="reg">num</span>]
-                    <span class="comment">; read num into EAX</span><br>
-                    <span class="keyword">MOV</span> [<span class="reg">num</span>],
-                    <span class="num">99</span>
-                    <span class="comment">; write 99 back to num</span><br>
-                    <span class="keyword">MOV</span> <span class="reg">EAX</span>,
-                    <span class="keyword">num</span>
-                    <span class="comment">; write the address of num to EAX</span>
-                </div>
                 <p class="note">
                     *note: the <span class="keyword">.text</span> section is where
                     execution starts. Any instructions placed outside a section are
                     assumed to be in <span class="keyword">.text</span>.
+                </p>
+            </div>
+            <!-- data declarations -->
+            <div class="section" id="data-declarations">
+                <h2>Data Declarations</h2>
+                <p>
+                    Variables are declared in the <span class="keyword">section .data</span>
+                    block using a name, size keyword, and initial value.
+                </p>
+                <div class="row-header">
+                    <div>keyword</div>
+                    <div>size</div>
+                    <div>example</div>
+                </div>
+                <div class="row">
+                    <div class="op">db</div>
+                    <div>1 byte</div>
+                    <div>
+                        <span class="reg">flag</span> <span class="keyword">db</span>
+                        <span class="num">1</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">dw</div>
+                    <div>2 bytes (word)</div>
+                    <div>
+                        <span class="reg">count</span> <span class="keyword">dw</span>
+                        <span class="num">256</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">dd</div>
+                    <div>4 bytes (double word)</div>
+                    <div>
+                        <span class="reg">value</span> <span class="keyword">dd</span>
+                        <span class="num">0x12345678</span>
+                    </div>
+                </div>
+                <p>
+                    When you reference a data variable by name in the text section, you get
+                    its memory address. Use square brackets to read the actual value.
+                </p>
+                <div class="code">
+                    <span class="keyword">section</span> <span class="label">.data</span><br>
+                    <span class="reg">x</span> <span class="keyword">dd</span>
+                    <span class="num">42</span><br>
+                    <br>
+                    <span class="keyword">section</span> <span class="label">.text</span><br>
+                    <span class="keyword">MOV</span> <span class="reg">EAX</span>,
+                    [<span class="reg">x</span>]
+                    <span class="comment">; EAX = 42 (read value)</span><br>
+                    <span class="keyword">MOV</span> <span class="reg">EBX</span>,
+                    <span class="reg">x</span>
+                    <span class="comment">; EBX = address of x</span>
+                </div>
+            </div>
+            <!-- macros -->
+            <div class="section" id="macros">
+                <h2>Macros</h2>
+                <p>
+                    Macros are text replacements. Use <span class="keyword">%define</span>
+                    to create a macro that gets replaced everywhere it appears.
+                </p>
+                <div class="code">
+                    <span class="keyword">%define</span> <span class="reg">MAX_COUNT</span>
+                    <span class="num">100</span><br>
+                    <span class="keyword">%define</span> <span class="reg">BUFFER_SIZE</span>
+                    <span class="num">1024</span><br>
+                    <br>
+                    <span class="keyword">MOV</span> <span class="reg">ECX</span>,
+                    <span class="reg">MAX_COUNT</span>
+                    <span class="comment">; becomes MOV ECX, 100</span><br>
+                    <span class="keyword">ADD</span> <span class="reg">EDI</span>,
+                    <span class="reg">BUFFER_SIZE</span>
+                    <span class="comment">; becomes ADD EDI, 1024</span>
+                </div>
+                <p class="note">
+                    *note: macros are case-insensitive and get replaced before any other
+                    processing happens. they are purely replacing text with their value.
                 </p>
             </div>
             <!-- data movement -->
@@ -350,7 +403,7 @@
                     <div>
                         <span class="keyword">SHL</span> <span class="reg">EAX</span>,
                         <span class="num">1</span>
-                        <span class="comment">; EAX *= 2</span>
+                        <span class="comment">; EAX * 2</span>
                     </div>
                 </div>
                 <div class="row">
@@ -359,7 +412,7 @@
                     <div>
                         <span class="keyword">SHR</span> <span class="reg">EAX</span>,
                         <span class="num">1</span>
-                        <span class="comment">; EAX /= 2</span>
+                        <span class="comment">; EAX / 2</span>
                     </div>
                 </div>
             </div>
@@ -474,7 +527,7 @@
                     the top of it.
                 </p>
                 <div class="code">
-                    <span class="comment">; typical function call</span><br>
+                    <span class="comment">; standard function call</span><br>
                     <span class="keyword">PUSH</span> <span class="reg">EAX</span><br>
                     <span class="keyword">CALL</span> <span class="label">.func</span><br>
                     <span class="keyword">POP</span> <span class="reg">EAX</span><br>
@@ -548,6 +601,7 @@
                         <span class="keyword">NOP</span>
                     </div>
                 </div>
+                <p class="note">*note: some of the 'Misc' instructions are not real x86 instructions.</p>
             </div>
             <!-- syntax -->
             <div class="section" id="syntax">
@@ -560,8 +614,8 @@
                 </div>
                 <h3>Labels</h3>
                 <p>
-                    A label is just a name followed by a colon. the dot at the start is
-                    optional but i used it everywhere to make them easier to spot.
+                    A label is just a name followed by a colon. The dot at the start is
+                    optional but often used to make labels easier to distinguish from variables and other identifiers
                 </p>
                 <div class="code">
                     <span class="label">.loop:</span><br>

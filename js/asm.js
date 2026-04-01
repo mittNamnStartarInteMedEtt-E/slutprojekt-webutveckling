@@ -141,8 +141,9 @@ let labels = {};
 let dataMap = {};
 let defines = {};
 
-// check for sections, variables and defines
-// replaces variables with the actual value and returns the clean code
+// scan code for sections, variable definitions, and macro definitions
+// applies macro substitutions and separates data from text sections
+// returns array of {text, srcLine} preserving original source line numbers
 function preprocessCode(code) {
     lines = [];
     lineMap = [];
@@ -151,110 +152,112 @@ function preprocessCode(code) {
     defines = {};
 
     let section = "text";
-    let dataPtr = 0;
+    let memoryPtr = 0;
 
     const rawLines = code.split("\n");
-    const parsed = [];
+    const processed = [];
 
-    rawLines.forEach((raw, srcLine) => {
-        raw = raw.split(";")[0].trim();
-        if (raw === "") return;
+    rawLines.forEach((rawLine, originalLineNum) => {
+        // remove everything after semicolon (comments)
+        rawLine = rawLine.split(";")[0].trim();
+        if (rawLine === "") return;
 
-        let line = raw.split(" ");
+        let tokens = rawLine.split(" ");
 
-        // handle %define globally
-        if (line[0].toUpperCase() === "%DEFINE") {
-            const name = line[1].toUpperCase();
-            const value = line[2];
-            defines[name] = value;
+        // handle macro definitions
+        if (tokens[0].toUpperCase() === "%DEFINE") {
+            const macroName = tokens[1].toUpperCase();
+            const macroValue = tokens[2];
+            defines[macroName] = macroValue;
             return;
         }
 
-        // apply defines before anything else
-        for (const [name, value] of Object.entries(defines)) {
-            raw = raw.replace(new RegExp(`\\b${name}\\b`, "gi"), value);
+        // substitute all defined macros into the line
+        for (const [macroName, macroValue] of Object.entries(defines)) {
+            rawLine = rawLine.replace(new RegExp(`\\b${macroName}\\b`, "gi"), macroValue);
         }
 
-        line = raw.split(/\s+/);
+        tokens = rawLine.split(/\s+/);
 
         // section switching
-        if (raw.toUpperCase() === "SECTION .DATA") {
+        if (rawLine.toUpperCase() === "SECTION .DATA") {
             section = "data";
             return;
-        } else if (raw.toUpperCase() === "SECTION .TEXT") {
+        } else if (rawLine.toUpperCase() === "SECTION .TEXT") {
             section = "text";
             return;
         }
 
-        // data section
+        // process data section declarations
         if (section === "data") {
-            if (line.length < 3) return;
-
-            const name = line[0].toUpperCase();
-            const type = line[1].toUpperCase();
-            const values = line.slice(2).join(" ").split(",").map(v => v.trim());
-
-            const fn = dataInstructions[type];
-            if (!fn) return;
-
-            dataMap[name] = dataPtr;
-
-            for (const val of values) {
-                dataPtr = fn(val, dataPtr);
+            if (tokens.length < 3) return;
+            const varName = tokens[0].toUpperCase();
+            const dataType = tokens[1].toUpperCase();
+            const dataValues = tokens.slice(2).join(" ").split(",").map(v => v.trim());
+            const dataHandler = dataInstructions[dataType];
+            if (!dataHandler) return;
+            
+            dataMap[varName] = memoryPtr;
+            for (const val of dataValues) {
+                memoryPtr = dataHandler(val, memoryPtr);
             }
-
         } else {
-            parsed.push({ text: raw, srcLine });
+            // add text section line with original source line number
+            processed.push({ text: rawLine, srcLine: originalLineNum });
         }
     });
 
-    return parsed.map(entry => entry.text).join("\n");
+    return processed;
 }
 
-// parse assembly lines
+
+// tokenize and parse a single assembly line into operation and arguments
 function parseLine(line) {
-    line = line.split(";")[0].trim(); // remove ; comments
-    if (line === "")
-        return null; // if line is empty return null
+    // remove comments
+    line = line.split(";")[0].trim();
+    if (line === "") return null;
 
-    const parts = line.split(" "); // split line into parts
-    let op = parts[0].toUpperCase(); // operation
-    let args = parts.slice(1).join(" ").split(", ").map(a => a.trim()); // splits the arguments of the line into an array
+    const tokens = line.split(" ");
+    const opcode = tokens[0].toUpperCase();
+    let operands = tokens.slice(1).join(" ").split(", ").map(a => a.trim());
 
-    // if arg is a string, dont uppercase
-    args = args.map(a => {
-        if (a.startsWith('"') && a.endsWith('"'))
-            return a;
-        return a.toUpperCase();
+    // preserve string literals (don't uppercase quoted strings)
+    operands = operands.map(operand => {
+        if (operand.startsWith('"') && operand.endsWith('"'))
+            return operand;
+        return operand.toUpperCase();
     });
 
-    return { raw: line.toUpperCase(), op: op, args: args };
+    return { raw: line.toUpperCase(), op: opcode, args: operands };
 }
 
-// parse labels
+// parse and load program into memory, extract labels and build instruction list
 function loadProgram(code) {
+    const preprocessed = preprocessCode(code);
+    const codeText = preprocessed.map(p => p.text).join("\n");
+    const codeLines = codeText.split("\n");
+    const instructionList = [];
 
-    code = preprocessCode(code);
-    const rawLines = code.split("\n");
-    const parsed = [];
-
-    // parse each line
-    rawLines.forEach((raw) => {
-        const line = parseLine(raw);
-        if (line)
-            parsed.push(line);
+    // parse each line and attach original source line number
+    codeLines.forEach((rawCode, idx) => {
+        const parsedLine = parseLine(rawCode);
+        if (parsedLine) {
+            parsedLine.srcLine = preprocessed[idx].srcLine;
+            instructionList.push(parsedLine);
+        }
     });
 
-    // find labels and build lines
-    let instrIndex = 0;
-    parsed.forEach(line => {
-        if (line.raw.endsWith(":")) {
-            // store where this label points in the instruction list
-            labels[line.raw.slice(0, -1)] = instrIndex;
+    // build label map and instruction list, skipping label definitions
+    let instrIdx = 0;
+    instructionList.forEach(instruction => {
+        if (instruction.raw.endsWith(":")) {
+            // label definition: map label name to instruction index
+            labels[instruction.raw.slice(0, -1)] = instrIdx;
         } else {
-            lines.push(line);
-            lineMap.push(line.srcLine);  // map EIP to original source line
-            instrIndex++;
+            // actual instruction: add to executable list
+            lines.push(instruction);
+            lineMap.push(instruction.srcLine);
+            instrIdx++;
         }
     });
 }
@@ -266,87 +269,96 @@ function isValidArg(str) {
     return cpu.regs[str] !== undefined || !isNaN(resolveVal(str));
 }
 
-// checks for errors and typos
+// check for syntax and semantic errors in assembly code
 function validate(code) {
-    code = preprocessCode(code);
+    const preprocessed = preprocessCode(code);
+    const codeText = preprocessed.map(p => p.text).join("\n");
 
     const jumpOps = ["JMP", "JE", "JNE", "JG", "JGE", "JL", "JLE", "CALL", "LOOP"];
-    const parsed = code.split("\n").map(parseLine).filter(line => line !== null);
-    const errors = [];
+    const instructionList = codeText.split("\n").map(parseLine).filter(line => line !== null);
+    const errorList = [];
 
-    // collect labels first
+    // collect all label names first
     const labelNames = {};
-    parsed.forEach(line => {
-        if (line.raw.toUpperCase().endsWith(":"))
-            labelNames[line.raw.slice(0, -1).toUpperCase()] = true;
+    instructionList.forEach(instruction => {
+        if (instruction.raw.toUpperCase().endsWith(":"))
+            labelNames[instruction.raw.slice(0, -1).toUpperCase()] = true;
     });
 
-    // for each line and its index
-    parsed.forEach((line, index) => {
-        if (line.raw.endsWith(":"))
+    // validate each instruction
+    instructionList.forEach((instruction, idx) => {
+        if (instruction.raw.endsWith(":"))
             return; // skip label definitions
 
-        // check for invalid instructions
-        if (!instructions[line.op])
-            errors.push(`line ${index + 1}: unknown instruction '${line.op}'`);
+        // check for unknown instructions
+        if (!instructions[instruction.op])
+            errorList.push(`line ${idx + 1}: unknown instruction '${instruction.op}'`);
 
-        // check jump targets
-        if (jumpOps.includes(line.op)) {
-            if (!labelNames[line.args[0]])
-                errors.push(`line ${index + 1}: unknown label '${line.args[0]}'`);
-            return; // skip argument check for jumps
+        // check jump target validity
+        if (jumpOps.includes(instruction.op)) {
+            if (!labelNames[instruction.args[0]])
+                errorList.push(`line ${idx + 1}: unknown label '${instruction.args[0]}'`);
+            return; // skip argument validation for jumps
         }
 
-        // check for invalid arguments
-        line.args.forEach(arg => {
+        // check argument validity
+        instruction.args.forEach(arg => {
             if (!isValidArg(arg))
-                errors.push(`line ${index + 1}: invalid argument '${arg}'`);
+                errorList.push(`line ${idx + 1}: invalid argument '${arg}'`);
         });
     });
 
-    return errors;
+    return errorList;
 }
 
 
 // helper functions
 
-// gets the value of a register, data variable, or plain number
-// "EAX" -> cpu.regs.EAX, "VAR" -> read32(dataMap.VAR), "42" -> 42
-function resolveVal(val) {
-    if (cpu.regs[val] !== undefined)
-        return cpu.regs[val];
+// resolve an operand to its numeric value
+// handles registers, data variables, memory references, hex literals, and decimal numbers
+// example: "EAX" returns register value, "VAR" returns data address, "[EAX]" reads from memory, "0xFF" returns 255
+function resolveVal(operand) {
+    // check if it's a register
+    if (cpu.regs[operand] !== undefined)
+        return cpu.regs[operand];
 
-    // if string
-    if (val.startsWith('"') && val.endsWith('"'))
-        return val;
+    // check if it's a string literal
+    if (operand.startsWith('"') && operand.endsWith('"'))
+        return operand;
 
-    // if memory reference
-    if (val.startsWith("[") && val.endsWith("]"))
-        return read32(resolveVal(val.slice(1, -1)));
+    // check if it's a memory reference like [EAX] or [0x1000]
+    if (operand.startsWith("[") && operand.endsWith("]"))
+        return read32(resolveVal(operand.slice(1, -1)));
 
-    // if hex
-    if (val.startsWith("0X"))
-        return parseInt(val, 16);
+    // check if it's a hex literal
+    if (operand.startsWith("0X"))
+        return parseInt(operand, 16);
 
-    // data section
-    if (dataMap[val] !== undefined)
-        return dataMap[val];
+    // check if it's a data variable name
+    if (dataMap[operand] !== undefined)
+        return dataMap[operand];
 
-    return Number(val);
+    // assume it's a decimal number
+    return Number(operand);
 }
 
-// handles writing to both registers and memory addresses
-// if dst is something like [EAX] it writes to that address in memory
-// otherwise just writes to the register directly
-function writeDst(dst, val) {
-    if (dst.startsWith("[") && dst.endsWith("]")) {
-        write32(resolveVal(dst.slice(1, -1)), val);
+// write a value to either a register or memory address
+// if destination is [EAX] or similar, write to memory at that address
+// otherwise write directly to the register
+function writeDst(destination, value) {
+    if (destination.startsWith("[") && destination.endsWith("]")) {
+        // memory write: resolve address and store value
+        write32(resolveVal(destination.slice(1, -1)), value);
     } else {
-        cpu.regs[dst] = val;
+        // register write
+        cpu.regs[destination] = value;
     }
 }
 
-// updates cpu flags
+// update cpu flags based on operation result
+// zero flag: set if result is zero
+// sign flag: set if bit 31 is set (sign bit for signed interpretation)
+// carry and overflow flags set by caller as needed
 function updateFlags(result, carry = false, overflow = false) {
     cpu.flags.ZERO = result === 0;
     cpu.flags.SIGN = (result & 0x80000000) !== 0;
@@ -642,40 +654,40 @@ const dataInstructions = {
     },
 };
 
-// execute instruction
-function execute(inst) {
-    // highlight current line
+// execute a single instruction with ui updates
+function execute(instruction) {
+    // highlight the instruction being executed
     highlightLine(cpu.regs.EIP);
 
-    const fn = instructions[inst.op];
-
-    if (fn)
-        fn(inst.args);
+    const handler = instructions[instruction.op];
+    if (handler)
+        handler(instruction.args);
 }
 
-// execute one line
+// execute one instruction, incrementing eip if no jump occurred
 function step() {
     if (cpu.regs.EIP >= lines.length)
         return;
 
-    const inst = lines[cpu.regs.EIP];
-    const prevEIP = cpu.regs.EIP;
+    const currentInstruction = lines[cpu.regs.EIP];
+    const eipBefore = cpu.regs.EIP;
 
-    execute(inst);
+    execute(currentInstruction);
 
-    if (cpu.regs.EIP === prevEIP)
+    // if instruction didn't set eip (no jump), increment it
+    if (cpu.regs.EIP === eipBefore)
         cpu.regs.EIP++;
 
     updateUIRegisters();
     updateUIFlags();
 }
 
-// run with a delay (or none)
+// run the program with optional delay between instructions
 function run(delay) {
-    const timer = setInterval(() => {
+    const executionTimer = setInterval(() => {
         step();
         if (cpu.regs.EIP >= lines.length) {
-            clearInterval(timer); // stop when program ends
+            clearInterval(executionTimer);
             isRunning = false;
             btnRun.disabled = false;
         }
