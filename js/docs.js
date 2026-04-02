@@ -1,6 +1,15 @@
-const toggleBtn = document.getElementById("menu-toggle");
-const sidebar = document.querySelector(".sidebar");
+const sidebar = document.querySelector('.sidebar');
+const menuBtn = document.getElementById('menu-btn');
 
-toggleBtn.addEventListener("click", () => {
-    sidebar.classList.toggle("open");
+// toggle sidebar on menu button click
+menuBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+});
+
+// close sidebar when clicking outside
+document.addEventListener('click', (event) => {
+    const isClickInside = sidebar.contains(event.target) || menuBtn.contains(event.target);
+    if (!isClickInside) {
+        sidebar.classList.remove('open');
+    }
 });

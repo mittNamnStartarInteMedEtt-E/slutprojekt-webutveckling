@@ -90,13 +90,16 @@ body {
 	margin-bottom: 32px;
 }
 
-#menu-toggle {
+#menu-btn {
     display: none;
-    margin-bottom: 16px;
+	top: 20px;
+	right: 20px;
+	height: 40px;
+	width: 40px;
+	position: fixed;
     background: var(--panel);
-    color: var(--accent);
-    border: 1px solid var(--accent);
-    padding: 10px;
+    color: var(--text);
+	border: none;
     font-family: 'Fira Code', monospace;
     cursor: pointer;
 }
@@ -194,8 +197,8 @@ body {
         flex-direction: column;
     }
 
-	#menu-toggle {
-        display: block;
+	#menu-btn {
+		display: block;
     }
 
 	.sidebar {
@@ -211,4 +214,8 @@ body {
     .sidebar.open {
         left: 0;
     }
+
+	.row:hover {
+		background-color: inherit;
+	}
 }
