@@ -320,3 +320,39 @@ button:hover,
 	width: 80px;
 	color: var(--accent);
 }
+
+/* mobile */
+
+@media (max-width: 768px) {
+    body {
+        overflow: auto;
+    }
+
+    .app {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+    }
+
+	#log-output {
+		min-height: 400px;
+	}
+
+    .resizer {
+        display: none;
+    }
+
+    .editor-panel,
+    .state-panel {
+        width: 100%;
+        height: auto;
+    }
+
+    .reg-popup-inner {
+		display: none;
+    }
+
+	#btn-show-regs {
+		display: none
+	}
+}

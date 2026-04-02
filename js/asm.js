@@ -679,7 +679,7 @@ function step() {
         cpu.regs.EIP++;
 
     updateUIRegisters();
-    updateUIFlags();
+    updateUIFlags();   
 }
 
 // run the program with optional delay between instructions
@@ -689,7 +689,7 @@ function run(delay) {
         if (cpu.regs.EIP >= lines.length) {
             clearInterval(executionTimer);
             isRunning = false;
-            btnRun.disabled = false;
+            document.querySelector("#btn-run").disabled = false;
         }
     }, delay);
 }

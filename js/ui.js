@@ -21,7 +21,7 @@ add eax, value      ; 92
 mov [0x1000], eax   ; 92 in memory
 mov ebx, [0x1000]   ; 92
 sub ebx, 92         ; 0, zero flag set
-je .ok              ; jump if zero, should jump
+je .ok
 
 .ok:
     mul eax, 2      ; 184
@@ -97,9 +97,7 @@ document.getElementById("btn-run").addEventListener("click", () => {
     loadProgram(editor.getValue());
 
     if (speedSlider.value == "0") {
-        // run everything at once with no delay
-        while (cpu.regs.EIP < lines.length) step();
-        isRunning = false;
+        run(0);
     } else {
         run(speedSlider.value);
     }
@@ -173,7 +171,10 @@ function highlightLine(eip) {
 
     editor.addLineClass(srcLine, "background", "current-line");
     highlightedLine = srcLine;
-    editor.scrollIntoView({ line: srcLine, ch: 0 }, 100); // scroll editor to keep the line visible
+    
+    // scroll the editor to find the highlighted line
+    const info = editor.charCoords({ line: srcLine, ch: 0 }, "local"); // relative to editor
+    editor.scrollTo(null, info.top - 50); // 50px padding from top
 }
 
 // logs a message as output
