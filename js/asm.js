@@ -141,19 +141,17 @@ let labels = {};
 let dataMap = {};
 let defines = {};
 
-// scan code for sections, variable definitions, and macro definitions
-// applies macro substitutions and separates data from text sections
-// returns array of {text, srcLine} preserving original source line numbers
+// scan code for sections, variable definitions and macro definitions
+// applies macro replacements and separates data from text sections
+// returns array of {text, srcLine} keeping original line numbers
 function preprocessCode(code) {
     lines = [];
     lineMap = [];
     labels = {};
     dataMap = {};
     defines = {};
-
     let section = "text";
     let memoryPtr = 0;
-
     const rawLines = code.split("\n");
     const processed = [];
 
@@ -177,7 +175,7 @@ function preprocessCode(code) {
             rawLine = rawLine.replace(new RegExp(`\\b${macroName}\\b`, "gi"), macroValue);
         }
 
-        tokens = rawLine.split(/\s+/);
+        tokens = rawLine.split(" ");
 
         // section switching
         if (rawLine.toUpperCase() === "SECTION .DATA") {
@@ -193,16 +191,39 @@ function preprocessCode(code) {
             if (tokens.length < 3) return;
             const varName = tokens[0].toUpperCase();
             const dataType = tokens[1].toUpperCase();
-            const dataValues = tokens.slice(2).join(" ").split(",").map(v => v.trim());
+
+            // split on commas but not inside strings
+            const rawValues = tokens.slice(2).join(" ");
+            const dataValues = [];
+            let current = "";
+            let inString = false;
+
+            for (const char of rawValues) {
+                if (char === '"') {
+                    inString = !inString;
+                    current += char;
+                } else if (char === "," && !inString) {
+                    dataValues.push(current.trim());
+                    current = "";
+                } else {
+                    current += char;
+                }
+            }
+
+            console.log(dataValues);
+
+            if (current.trim() !== "")
+                dataValues.push(current.trim());
+
             const dataHandler = dataInstructions[dataType];
             if (!dataHandler) return;
-            
+
             dataMap[varName] = memoryPtr;
             for (const val of dataValues) {
                 memoryPtr = dataHandler(val, memoryPtr);
             }
         } else {
-            // add text section line with original source line number
+            // add text section line with original line number
             processed.push({ text: rawLine, srcLine: originalLineNum });
         }
     });
@@ -221,7 +242,7 @@ function parseLine(line) {
     const opcode = tokens[0].toUpperCase();
     let operands = tokens.slice(1).join(" ").split(", ").map(a => a.trim());
 
-    // preserve string literals (don't uppercase quoted strings)
+    // preserve string literals (dont uppercase quoted strings)
     operands = operands.map(operand => {
         if (operand.startsWith('"') && operand.endsWith('"'))
             return operand;
@@ -238,7 +259,7 @@ function loadProgram(code) {
     const codeLines = codeText.split("\n");
     const instructionList = [];
 
-    // parse each line and attach original source line number
+    // parse each line and attach original line number
     codeLines.forEach((rawCode, idx) => {
         const parsedLine = parseLine(rawCode);
         if (parsedLine) {
@@ -251,10 +272,10 @@ function loadProgram(code) {
     let instrIdx = 0;
     instructionList.forEach(instruction => {
         if (instruction.raw.endsWith(":")) {
-            // label definition: map label name to instruction index
+            // label definition, map label name to instruction index
             labels[instruction.raw.slice(0, -1)] = instrIdx;
         } else {
-            // actual instruction: add to executable list
+            // actual instruction, add to executable list
             lines.push(instruction);
             lineMap.push(instruction.srcLine);
             instrIdx++;
@@ -269,7 +290,7 @@ function isValidArg(str) {
     return cpu.regs[str] !== undefined || !isNaN(resolveVal(str));
 }
 
-// check for syntax and semantic errors in assembly code
+// check for syntax errors in assembly code
 function validate(code) {
     const preprocessed = preprocessCode(code);
     const codeText = preprocessed.map(p => p.text).join("\n");
@@ -356,9 +377,6 @@ function writeDst(destination, value) {
 }
 
 // update cpu flags based on operation result
-// zero flag: set if result is zero
-// sign flag: set if bit 31 is set (sign bit for signed interpretation)
-// carry and overflow flags set by caller as needed
 function updateFlags(result, carry = false, overflow = false) {
     cpu.flags.ZERO = result === 0;
     cpu.flags.SIGN = (result & 0x80000000) !== 0;
@@ -602,21 +620,27 @@ const instructions = {
         cpu.regs.ESP += 4;
     },
 
-    // print string or value
     PRINT(args) {
         const val = args[0];
-        if (val.startsWith('"') && val.endsWith('"') || val.startsWith("'") && val.endsWith("'")) {
-            log(val.slice(1, -1)); // strip quotes and print
+        if (val.startsWith("[") && val.endsWith("]")) {
+            let addr = resolveVal(val.slice(1, -1));
+            let str = "";
+            while (memory[addr] !== 0)
+                str += String.fromCharCode(memory[addr++]);
+            log(str, false, false);
         } else {
-            log(resolveVal(val));
+            log(resolveVal(val), false, false);
         }
     },
 
-    // print string or value with newline
     PRINTLN(args) {
         const val = args[0];
-        if (val.startsWith('"') && val.endsWith('"') || val.startsWith("'") && val.endsWith("'")) {
-            log(val.slice(1, -1), false, true); // strip quotes and print
+        if (val.startsWith("[") && val.endsWith("]")) {
+            let addr = resolveVal(val.slice(1, -1));
+            let str = "";
+            while (memory[addr] !== 0)
+                str += String.fromCharCode(memory[addr++]);
+            log(str, false, true);
         } else {
             log(resolveVal(val), false, true);
         }
@@ -638,16 +662,26 @@ const instructions = {
 
 // assembly data section definition instructions
 const dataInstructions = {
+    // define byte (also for strings, needs explicit null terminator)
     DB(value, dataPtr) {
+        if (value.startsWith('"') && value.endsWith('"')) {
+            const str = value.slice(1, -1);
+            for (const char of str)
+                write8(dataPtr++, char.charCodeAt(0));
+            return dataPtr;
+        }
+
         write8(dataPtr, Number(value));
         return dataPtr + 1;
     },
 
+    // define word (2 bytes)
     DW(value, dataPtr) {
         write16(dataPtr, Number(value));
         return dataPtr + 2;
     },
 
+    // define double word (4 bytes)
     DD(value, dataPtr) {
         write32(dataPtr, Number(value));
         return dataPtr + 4;

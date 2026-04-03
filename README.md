@@ -10,4 +10,4 @@ A javascript-based Assembly emulator.
 
 ## Usage
 
-Check out the documentation page [here](https://mittnamnstartarintemedett-e.github.io/slutprojekt-webutveckling/documentation.html)
+Check out the documentation page [here](https://mittnamnstartarintemedett-e.github.io/slutprojekt-webutveckling/docs.html)
