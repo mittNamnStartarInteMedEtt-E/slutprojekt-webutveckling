@@ -1,3 +1,5 @@
+// found a codemirror file online for x86, for code highlighting
+
 CodeMirror.defineMode("asm", function() {
     const instructions = /^(MOV|ADD|SUB|MUL|DIV|INC|DEC|NEG|AND|OR|XOR|NOT|SHL|SHR|CMP|TEST|JMP|JE|JNE|JG|JL|JGE|JLE|JZ|JNZ|JC|JNC|JS|JNS|CALL|RET|PUSH|POP|NOP|HLT|INT|LEA|XCHG|CBW|CWD|PRINT|PRINTLN|LOOP)\b/i;
     const registers = /^(EAX|EBX|ECX|EDX|ESI|EDI|ESP|EBP|AX|BX|CX|DX|SI|DI|SP|BP|AH|AL|BH|BL|CH|CL|DH|DL)\b/i;
@@ -22,21 +24,26 @@ CodeMirror.defineMode("asm", function() {
             if (stream.match(comment)) return "comment";
 
             // section switching
-            if (stream.match(/^SECTION\s+\.DATA/i)) { state.inData = true;  return "keyword"; }
-            if (stream.match(/^SECTION\s+\.TEXT/i)) { state.inData = false; return "keyword"; }
+            if (stream.match(/^SECTION/i)) { 
+                // peek ahead to set state but don't match the whole thing
+                if (stream.string.match(/SECTION\s+\.DATA/i)) state.inData = true;
+                if (stream.string.match(/SECTION\s+\.TEXT/i)) state.inData = false;
+                return "keyword"; 
+            }
+            // skip .data / .text labels without coloring
+            if (stream.match(/^\.(DATA|TEXT)\b/i)) return null;
 
             // %define works everywhere
             if (stream.match(define)) return "keyword";
 
             if (state.inData) {
-                // strings
                 if (stream.match(string)) return "string";
-                // data type keywords
                 if (stream.match(dataTypes)) return "keyword";
-                // hex and numbers (for raw byte values like 0, 10, 32)
                 if (stream.match(hex)) return "hex";
-                if (stream.match(number)) return "number";
-                // everything else (variable names) — just advance, no color
+                // only highlight as number if not followed by a letter (i.e. not part of a variable name)
+                if (stream.match(/^-?[0-9]+(?![A-Z_])/i)) return "number";
+                // consume whole token as plain identifier (no color)
+                if (stream.match(/^[A-Z0-9_]+/i)) return null;
                 stream.next();
                 return null;
             }

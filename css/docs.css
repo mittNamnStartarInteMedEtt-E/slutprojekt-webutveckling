@@ -173,7 +173,8 @@ body {
 .keyword { color: var(--error); }
 .op { color: var(--error); font-weight: bold; }
 .reg { color: var(--accent); }
-.num { color: var(--purple); }
+.num { color: var(--orange); }
+.hex { color: var(--purple); }
 .label { color: var(--yellow); }
 .comment { color: var(--muted); font-style: italic; }
 

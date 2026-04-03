@@ -75,7 +75,9 @@ function createRegisters() {
     // special registers don't have sub-registers, like AH and AL
     // just a straight 32 bit read/write with >>> 0 clamping on set
 
-    // e.g. ESP, EIP (stack pointer and instruction pointer)
+    // ESI, EDI, EBP are included for authenticity but have no special behavior
+    // ESP points to the top of the stack, at 1 MB currently
+    // EIP points to the current instruction/line, so the first instruction would be 1, second would be 2, etc
     for (const [name, i] of Object.entries(SPECIAL)) {
         Object.defineProperty(regs, name, {
             get() { return special[i]; },
@@ -209,8 +211,6 @@ function preprocessCode(code) {
                     current += char;
                 }
             }
-
-            console.log(dataValues);
 
             if (current.trim() !== "")
                 dataValues.push(current.trim());
@@ -487,7 +487,7 @@ const instructions = {
         // check for 32 bit int overflow
         const overflow = result > 0xFFFFFFFF || result < 0;
 
-        updateFlags(result, false, overflow);
+        updateFlags(result, cpu.flags.CARRY, overflow);
         writeDst(args[0], result);
     },
 
@@ -495,20 +495,32 @@ const instructions = {
     DEC(args) {
         const result = resolveVal(args[0]) - 1;
 
-        // check for 32 bit int overflow
-        const overflow =  result < 0;
+        const overflow = (a === 0x80000000);
 
-        updateFlags(result);
+        updateFlags(result, cpu.flags.CARRY, overflow);
         writeDst(args[0], result);
     },
 
-    // compare dest and src
+    // compare dest and src (by subtracting)
     CMP(args) {
         const a = resolveVal(args[0]);
         const b = resolveVal(args[1]);
-        const result = a - b;
 
-        updateFlags(result);
+        const result = (a - b) >>> 0;
+        const carry = a < b;
+        const overflow = ((a ^ b) & (a ^ result) & 0x80000000) !== 0;
+
+        updateFlags(result, carry, overflow);
+    },
+
+    // like CMP but uses bitwise AND, and only updates flags
+    TEST(args) {
+        const a = resolveVal(args[0]);
+        const b = resolveVal(args[1]);
+
+        const result = a & b;
+
+        updateFlags(result, false, false);
     },
 
     // unconditional jump to a label
@@ -561,6 +573,30 @@ const instructions = {
     // jump if not overflow
     JNO(args) {
         if (!cpu.flags.OVERFLOW)
+            cpu.regs.EIP = labels[args[0]];
+    },
+
+    // jump if zero
+    JZ(args) {
+        if (cpu.flags.ZERO)
+            cpu.regs.EIP = labels[args[0]];
+    },
+
+    // jump if not zero
+    JNZ(args) {
+        if (!cpu.flags.ZERO)
+            cpu.regs.EIP = labels[args[0]];
+    },
+
+    // jump if sign
+    JS(args) {
+        if (cpu.flags.SIGN) 
+            cpu.regs.EIP = labels[args[0]];
+    },
+
+    // jump if not sign
+    JNS(args) {
+        if (!cpu.flags.SIGN)
             cpu.regs.EIP = labels[args[0]];
     },
 

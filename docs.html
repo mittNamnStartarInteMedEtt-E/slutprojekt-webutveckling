@@ -45,19 +45,19 @@
                 <h2>Registers</h2>
                 <p>
                     Registers are small storage slots inside the CPU, almost like
-                    pre-made variables! There are 4 general purpose ones (A, B, C, D)
+                    pre-made variables! There are 4 general purpose ones (a, b, c, d)
                     and each one has 4 names that all point to different parts of the
                     same 32-bit value.
                 </p>
                 <p>
-                    <span class="op">EAX</span> is the full 32-bit register. AX is the
-                    lower 16 bits of it, and AH/AL are the two halves of AX. They all
+                    <span class="op">eax</span> is the full 32-bit register. ax is the
+                    lower 16 bits of it, and ah/al are the two halves of ax. They all
                     point to the same value, so changing one affects the others.
                 </p>
                 <p>
-                    <span class="op">EBX</span>, <span class="op">ECX</span> and
-                    <span class="op">EDX</span> work exactly the same way with their own
-                    sub-registers (BX/BH/BL, etc).
+                    <span class="op">ebx</span>, <span class="op">ecx</span> and
+                    <span class="op">edx</span> work exactly the same way with their own
+                    sub-registers (bx/bh/bl, etc).
                 </p>
                 <h3>Special registers</h3>
                 <p>
@@ -69,29 +69,29 @@
                     <div>what it does</div>
                 </div>
                 <div class="row">
-                    <div class="op">EIP</div>
+                    <div class="op">eip</div>
                     <div>Instruction Pointer</div>
                     <div>
                         tracks which instruction runs next. jumps modify this directly.
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">ESP</div>
+                    <div class="op">esp</div>
                     <div>Stack Pointer</div>
                     <div>
-                        points to the top of the stack. PUSH decreases it, POP increases
+                        points to the top of the stack. PUSH decreases it, pop increases
                         it. starts at 1MB.
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">EBP</div>
+                    <div class="op">ebp</div>
                     <div>Base Pointer</div>
                     <div>
                         usually marks the bottom of the current function's stack frame.
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">ESI</div>
+                    <div class="op">esi</div>
                     <div>Source Index</div>
                     <div>
                         general purpose, traditionally used as a source pointer in memory
@@ -99,12 +99,12 @@
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">EDI</div>
+                    <div class="op">edi</div>
                     <div>Destination Index</div>
                     <div>general purpose, traditionally a destination pointer.</div>
                 </div>
                 <p class="note">
-                    *note: currently only EIP and ESP have functionality attached to
+                    *note: currently only eip and esp have functionality attached to
                     them.
                 </p>
             </div>
@@ -122,19 +122,19 @@
                     <div>when it gets set</div>
                 </div>
                 <div class="row">
-                    <div class="op">ZERO</div>
+                    <div class="op">zero</div>
                     <div>result was zero</div>
                     <div>
                         last arithmetic result was 0, or both sides of cmp were equal
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">CARRY</div>
+                    <div class="op">carry</div>
                     <div>unsigned underflow</div>
                     <div>subtraction went negative (left side smaller than right)</div>
                 </div>
                 <div class="row">
-                    <div class="op">SIGN</div>
+                    <div class="op">sign</div>
                     <div>result was negative</div>
                     <div>
                         highest bit of result is set, meaning it is negative as a signed
@@ -142,7 +142,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">OVERFLOW</div>
+                    <div class="op">overflow</div>
                     <div>signed overflow</div>
                     <div>
                         set when a number overflows, wrapping around to a negative number
@@ -158,15 +158,15 @@
                     address in square brackets.
                 </p>
                 <div class="code">
-                    <span class="keyword">MOV</span> [<span class="num">0x1000</span>],
-                    <span class="reg">EAX</span>
-                    <span class="comment">; write EAX to address 0x1000</span><br>
-                    <span class="keyword">MOV</span> <span class="reg">EBX</span>,
-                    [<span class="num">0x1000</span>]
-                    <span class="comment">; read from 0x1000 into EBX</span><br>
-                    <span class="keyword">MOV</span> [<span class="reg">EAX</span>],
+                    <span class="keyword">mov</span> [<span class="hex">0x1000</span>],
+                    <span class="reg">eax</span>
+                    <span class="comment">; write eax to address 0x1000</span><br>
+                    <span class="keyword">mov</span> <span class="reg">ebx</span>,
+                    [<span class="hex">0x1000</span>]
+                    <span class="comment">; read from 0x1000 into ebx</span><br>
+                    <span class="keyword">mov</span> [<span class="reg">eax</span>],
                     <span class="num">42</span>
-                    <span class="comment">; use EAX as the address</span>
+                    <span class="comment">; use eax as the address</span>
                 </div>
                 <p class="note">
                     *note: reads and writes are (almost) always 32-bit (4 bytes at
@@ -221,7 +221,7 @@
                     <div>4 bytes (double word)</div>
                     <div>
                         <span class="reg">value</span> <span class="keyword">dd</span>
-                        <span class="num">0x12345678</span>
+                        <span class="hex">0x12345678</span>
                     </div>
                 </div>
                 <p class="note">
@@ -234,12 +234,28 @@
                     <span class="num">42</span><br>
                     <br>
                     <span class="keyword">section</span> <span class="label">.text</span><br>
-                    <span class="keyword">MOV</span> <span class="reg">EAX</span>,
+                    <span class="keyword">mov</span> <span class="reg">eax</span>,
                     [<span class="reg">x</span>]
-                    <span class="comment">; EAX = 42 (read value)</span><br>
-                    <span class="keyword">MOV</span> <span class="reg">EBX</span>,
+                    <span class="comment">; eax = 42 (read value)</span><br>
+                    <span class="keyword">mov</span> <span class="reg">ebx</span>,
                     <span class="reg">x</span>
-                    <span class="comment">; EBX = address of x</span>
+                    <span class="comment">; ebx = address of x</span>
+                </div>
+                <p class="note">
+                    Strings are stored in a <span class="keyword">db</span>, they must be null-terminated to work correctly. (see example)
+                </p>
+                <div class="code">
+                    <span class="keyword">section</span> <span class="label">.data</span><br>
+                    <span class="reg">msg</span> <span class="keyword">db</span> "string", 
+                    <span class="num">0</span> <span class="comment">; null-terminated string, add ', 0'</span>
+                    <br><br>
+                    <span class="keyword">section</span> <span class="label">.text</span><br>
+                    <span class="keyword">mov</span> <span class="reg">eax</span>, <span class="reg">msg</span>
+                    <span class="comment">; move the address of 'msg' into eax</span><br>
+                    <span class="keyword">println</span> [<span class="reg">eax</span>] 
+                    <span class="comment">; loops over the string until it hits the null-terminator</span><br>
+                    <span class="keyword">println</span> <span class="reg">eax</span>
+                    <span class="comment">; prints the address of the first character in the string</span>
                 </div>
             </div>
             <!-- macros -->
@@ -255,12 +271,12 @@
                     <span class="keyword">%define</span> <span class="reg">BUFFER_SIZE</span>
                     <span class="num">1024</span><br>
                     <br>
-                    <span class="keyword">MOV</span> <span class="reg">ECX</span>,
+                    <span class="keyword">mov</span> <span class="reg">ecx</span>,
                     <span class="reg">MAX_COUNT</span>
-                    <span class="comment">; becomes MOV ECX, 100</span><br>
-                    <span class="keyword">ADD</span> <span class="reg">EDI</span>,
+                    <span class="comment">; becomes mov ecx, 100</span><br>
+                    <span class="keyword">add</span> <span class="reg">edi</span>,
                     <span class="reg">BUFFER_SIZE</span>
-                    <span class="comment">; becomes ADD EDI, 1024</span>
+                    <span class="comment">; becomes add edi, 1024</span>
                 </div>
                 <p class="note">
                     *note: macros are case-insensitive and get replaced before any other
@@ -276,18 +292,18 @@
                     <div>example</div>
                 </div>
                 <div class="row">
-                    <div class="op">MOV</div>
+                    <div class="op">mov</div>
                     <div>
                         copies a value into a register or memory address. doesnt affect
                         flags.
                     </div>
                     <div>
-                        <span class="keyword">MOV</span> <span class="reg">EAX</span>,
+                        <span class="keyword">mov</span> <span class="reg">eax</span>,
                         <span class="num">42</span><br>
-                        <span class="keyword">MOV</span> <span class="reg">EBX</span>,
-                        <span class="reg">EAX</span><br>
-                        <span class="keyword">MOV</span> [<span class="num">0x200</span>],
-                        <span class="reg">EAX</span>
+                        <span class="keyword">mov</span> <span class="reg">ebx</span>,
+                        <span class="reg">eax</span><br>
+                        <span class="keyword">mov</span> [<span class="hex">0x200</span>],
+                        <span class="reg">eax</span>
                     </div>
                 </div>
             </div>
@@ -300,26 +316,26 @@
                     <div>example</div>
                 </div>
                 <div class="row">
-                    <div class="op">ADD</div>
+                    <div class="op">add</div>
                     <div>adds src to dest</div>
                     <div>
-                        <span class="keyword">ADD</span> <span class="reg">EAX</span>,
+                        <span class="keyword">add</span> <span class="reg">eax</span>,
                         <span class="num">10</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">SUB</div>
+                    <div class="op">sub</div>
                     <div>subtracts src from dest</div>
                     <div>
-                        <span class="keyword">SUB</span> <span class="reg">EAX</span>,
+                        <span class="keyword">sub</span> <span class="reg">eax</span>,
                         <span class="num">5</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">MUL</div>
+                    <div class="op">mul</div>
                     <div>multiplies dest by src</div>
                     <div>
-                        <span class="keyword">MUL</span> <span class="reg">EAX</span>,
+                        <span class="keyword">mul</span> <span class="reg">eax</span>,
                         <span class="num">3</span>
                     </div>
                 </div>
@@ -327,34 +343,34 @@
                     <div class="op">DIV</div>
                     <div>divides dest by src. dont divide by zero.</div>
                     <div>
-                        <span class="keyword">DIV</span> <span class="reg">EAX</span>,
+                        <span class="keyword">DIV</span> <span class="reg">eax</span>,
                         <span class="num">2</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">INC</div>
+                    <div class="op">inc</div>
                     <div>adds 1 to dest</div>
                     <div>
-                        <span class="keyword">INC</span> <span class="reg">ECX</span>
+                        <span class="keyword">inc</span> <span class="reg">ecx</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">DEC</div>
+                    <div class="op">dec</div>
                     <div>subtracts 1 from dest</div>
                     <div>
-                        <span class="keyword">DEC</span> <span class="reg">ECX</span>
+                        <span class="keyword">dec</span> <span class="reg">ecx</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">CMP</div>
+                    <div class="op">cmp</div>
                     <div>
                         updates cpu flags. compares if greater than or equal to and sets
                         appropriate flags
                     </div>
                     <div>
-                        <span class="keyword">CMP</span> <span class="reg">ECX</span>,
+                        <span class="keyword">cmp</span> <span class="reg">ecx</span>,
                         <span class="num">0</span><br>
-                        <span class="keyword">JE</span> <span class="label">.done</span>
+                        <span class="keyword">je</span> <span class="label">.done</span>
                     </div>
                 </div>
             </div>
@@ -368,55 +384,55 @@
                     <div>example</div>
                 </div>
                 <div class="row">
-                    <div class="op">AND</div>
+                    <div class="op">and</div>
                     <div>output bit is 1 only if both input bits are 1</div>
                     <div>
-                        <span class="keyword">AND</span> <span class="reg">EAX</span>,
-                        <span class="num">0xFF</span>
+                        <span class="keyword">and</span> <span class="reg">eax</span>,
+                        <span class="hex">0xFF</span>
                         <span class="comment">; keep only lowest 8 bits</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">OR</div>
+                    <div class="op">or</div>
                     <div>output bit is 1 if at least one input bit is 1</div>
                     <div>
-                        <span class="keyword">OR</span> <span class="reg">EAX</span>,
-                        <span class="num">0x100</span>
+                        <span class="keyword">or</span> <span class="reg">eax</span>,
+                        <span class="hex">0x100</span>
                         <span class="comment">; set bit 8</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">XOR</div>
+                    <div class="op">xor</div>
                     <div>output bit is 1 only if the two input bits differ</div>
                     <div>
-                        <span class="keyword">XOR</span> <span class="reg">EAX</span>,
-                        <span class="reg">EAX</span>
-                        <span class="comment">; EAX = 0</span>
+                        <span class="keyword">xor</span> <span class="reg">eax</span>,
+                        <span class="reg">eax</span>
+                        <span class="comment">; eax = 0</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">NOT</div>
+                    <div class="op">not</div>
                     <div>flips every bit, 1 becomes 0 and 0 becomes 1</div>
                     <div>
-                        <span class="keyword">NOT</span> <span class="reg">EAX</span>
+                        <span class="keyword">not</span> <span class="reg">eax</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">SHL</div>
+                    <div class="op">shl</div>
                     <div>shifts bits left by src positions, equivalent to multiplying by 2 for each shift</div>
                     <div>
-                        <span class="keyword">SHL</span> <span class="reg">EAX</span>,
+                        <span class="keyword">shl</span> <span class="reg">eax</span>,
                         <span class="num">1</span>
-                        <span class="comment">; EAX * 2</span>
+                        <span class="comment">; eax * 2</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">SHR</div>
+                    <div class="op">shr</div>
                     <div>shifts bits right by src positions, equivalent to dividing by 2 for each shift</div>
                     <div>
-                        <span class="keyword">SHR</span> <span class="reg">EAX</span>,
+                        <span class="keyword">shr</span> <span class="reg">eax</span>,
                         <span class="num">1</span>
-                        <span class="comment">; EAX / 2</span>
+                        <span class="comment">; eax / 2</span>
                     </div>
                 </div>
             </div>
@@ -433,93 +449,93 @@
                     <div>example</div>
                 </div>
                 <div class="row">
-                    <div class="op">JMP</div>
+                    <div class="op">jmp</div>
                     <div>always jumps, no condition</div>
                     <div>
-                        <span class="keyword">JMP</span> <span class="label">.end</span>
+                        <span class="keyword">jmp</span> <span class="label">.end</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">JE</div>
+                    <div class="op">je</div>
                     <div>jumps if equal</div>
                     <div>
-                        <span class="keyword">CMP</span> <span class="reg">EAX</span>,
-                        <span class="reg">EBX</span><br>
-                        <span class="keyword">JE</span>
+                        <span class="keyword">cmp</span> <span class="reg">eax</span>,
+                        <span class="reg">ebx</span><br>
+                        <span class="keyword">je</span>
                         <span class="label">.equal</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">JNE</div>
+                    <div class="op">jne</div>
                     <div>jumps if not equal</div>
                     <div>
-                        <span class="keyword">CMP</span> <span class="reg">ECX</span>,
+                        <span class="keyword">cmp</span> <span class="reg">ecx</span>,
                         <span class="num">0</span><br>
-                        <span class="keyword">JNE</span>
+                        <span class="keyword">jne</span>
                         <span class="label">.loop</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">JG</div>
+                    <div class="op">jg</div>
                     <div>jumps if dest was greater than src</div>
                     <div>
-                        <span class="keyword">CMP</span> <span class="reg">EAX</span>,
+                        <span class="keyword">cmp</span> <span class="reg">eax</span>,
                         <span class="num">10</span><br>
-                        <span class="keyword">JG</span>
+                        <span class="keyword">jg</span>
                         <span class="label">.big</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">JGE</div>
+                    <div class="op">jge</div>
                     <div>jumps if dest was greater or equal</div>
                     <div>
-                        <span class="keyword">JGE</span> <span class="label">.label</span>
+                        <span class="keyword">jge</span> <span class="label">.label</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">JL</div>
+                    <div class="op">jl</div>
                     <div>jumps if dest was less than src</div>
                     <div>
-                        <span class="keyword">CMP</span> <span class="reg">EAX</span>,
+                        <span class="keyword">cmp</span> <span class="reg">eax</span>,
                         <span class="num">10</span><br>
-                        <span class="keyword">JL</span>
+                        <span class="keyword">jl</span>
                         <span class="label">.small</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">JLE</div>
+                    <div class="op">jle</div>
                     <div>jumps if dest was less or equal</div>
                     <div>
-                        <span class="keyword">JLE</span> <span class="label">.label</span>
+                        <span class="keyword">jle</span> <span class="label">.label</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">JO</div>
+                    <div class="op">jo</div>
                     <div>jumps if overflow flag is set</div>
                     <div>
-                        <span class="keyword">JO</span> <span class="label">.label</span>
+                        <span class="keyword">jo</span> <span class="label">.label</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">JNO</div>
+                    <div class="op">jno</div>
                     <div>jumps if overflow flag is not set</div>
                     <div>
-                        <span class="keyword">JNO</span> <span class="label">.label</span>
+                        <span class="keyword">jno</span> <span class="label">.label</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">LOOP</div>
-                    <div>decrements ECX then jumps to label if ECX is not zero</div>
+                    <div class="op">loop</div>
+                    <div>decrements ecx then jumps to label if ecx is not zero</div>
                     <div>
-                        <span class="keyword">MOV</span> <span class="reg">ECX</span>,
+                        <span class="keyword">mov</span> <span class="reg">ecx</span>,
                         <span class="num">5</span><br>
                         <span class="label">.start:</span><br>
-                        <span class="keyword">LOOP</span> <span class="label">.start</span>
+                        <span class="keyword">loop</span> <span class="label">.start</span>
                         <span class="comment">; repeats 5 times</span>
                     </div>
                 </div>
                 <p class="note">
-                    *note: always put CMP right before a jump or the flags might be
+                    *note: always put cmp right before a jump or the flags might be
                     wrong from a previous instruction.
                 </p>
             </div>
@@ -527,19 +543,19 @@
             <div class="section" id="stack">
                 <h2>Stack and calls</h2>
                 <p>
-                    The stack is a region of memory that grows downward. ESP points to
+                    The stack is a region of memory that grows downward. esp points to
                     the top of it.
                 </p>
                 <div class="code">
                     <span class="comment">; standard function call</span><br>
-                    <span class="keyword">PUSH</span> <span class="reg">EAX</span><br>
-                    <span class="keyword">CALL</span> <span class="label">.func</span><br>
-                    <span class="keyword">POP</span> <span class="reg">EAX</span><br>
+                    <span class="keyword">push</span> <span class="reg">eax</span><br>
+                    <span class="keyword">call</span> <span class="label">.func</span><br>
+                    <span class="keyword">ret</span> <span class="reg">eax</span><br>
                     <br>
                     <span class="label">.func:</span><br>
-                    <span class="keyword">MOV</span> <span class="reg">EAX</span>,
+                    <span class="keyword">mov</span> <span class="reg">eax</span>,
                     <span class="num">99</span><br>
-                    <span class="keyword">RET</span>
+                    <span class="keyword">ret</span>
                 </div>
                 <div class="row-header">
                     <div>op</div>
@@ -547,31 +563,31 @@
                     <div>example</div>
                 </div>
                 <div class="row">
-                    <div class="op">PUSH</div>
-                    <div>ESP -= 4, then writes value to memory at ESP</div>
+                    <div class="op">push</div>
+                    <div>esp -= 4, then writes value to memory at esp</div>
                     <div>
-                        <span class="keyword">PUSH</span> <span class="reg">EAX</span>
+                        <span class="keyword">push</span> <span class="reg">eax</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">POP</div>
-                    <div>reads from memory at ESP into dest, then ESP += 4</div>
+                    <div class="op">pop</div>
+                    <div>reads from memory at esp into dest, then esp += 4</div>
                     <div>
-                        <span class="keyword">POP</span> <span class="reg">EBX</span>
+                        <span class="keyword">pop</span> <span class="reg">ebx</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">CALL</div>
+                    <div class="op">call</div>
                     <div>pushes return address onto stack then jumps to label</div>
                     <div>
-                        <span class="keyword">CALL</span>
+                        <span class="keyword">call</span>
                         <span class="label">.function</span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">RET</div>
+                    <div class="op">ret</div>
                     <div>pops the return address and jumps back to it</div>
-                    <div><span class="keyword">RET</span></div>
+                    <div><span class="keyword">ret</span></div>
                 </div>
             </div>
             <!-- misc -->
@@ -583,26 +599,26 @@
                     <div>example</div>
                 </div>
                 <div class="row">
-                    <div class="op">PRINT</div>
+                    <div class="op">print</div>
                     <div>prints a register value or string to the output panel, no newline</div>
                     <div>
-                        <span class="keyword">PRINT</span> <span class="reg">EAX</span><br>
-                        <span class="keyword">PRINT</span> <span class="num">"hello"</span>
+                        <span class="keyword">print</span> <span class="reg">eax</span><br>
+                        <span class="keyword">print</span> "hello"
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">PRINTLN</div>
-                    <div>same as PRINT but adds a newline at the end</div>
+                    <div class="op">println</div>
+                    <div>same as print but adds a newline at the end</div>
                     <div>
-                        <span class="keyword">PRINTLN</span> <span class="reg">EAX</span><br>
-                        <span class="keyword">PRINTLN</span> <span class="num">"hello"</span>
+                        <span class="keyword">println</span> <span class="reg">eax</span><br>
+                        <span class="keyword">println</span> "hello"
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">NOP</div>
+                    <div class="op">nop</div>
                     <div>does nothing, advances to the next instruction</div>
                     <div>
-                        <span class="keyword">NOP</span>
+                        <span class="keyword">nop</span>
                     </div>
                 </div>
                 <p class="note">*note: some of the 'Misc' instructions are not real x86 instructions.</p>
@@ -612,7 +628,7 @@
                 <h2>Syntax</h2>
                 <h3>Comments</h3>
                 <div class="code">
-                    <span class="keyword">MOV</span> <span class="reg">EAX</span>,
+                    <span class="keyword">mov</span> <span class="reg">eax</span>,
                     <span class="num">1</span>
                     <span class="comment">; semicolons start a comment</span>
                 </div>
@@ -623,25 +639,25 @@
                 </p>
                 <div class="code">
                     <span class="label">.loop:</span><br>
-                    <span class="keyword">DEC</span> <span class="reg">ECX</span><br>
-                    <span class="keyword">JNE</span> <span class="label">.loop</span>
+                    <span class="keyword">dec</span> <span class="reg">ecx</span><br>
+                    <span class="keyword">jne</span> <span class="label">.loop</span>
                 </div>
                 <h3>Numbers</h3>
                 <div class="code">
-                    <span class="keyword">MOV</span> <span class="reg">EAX</span>,
+                    <span class="keyword">mov</span> <span class="reg">eax</span>,
                     <span class="num">255</span> <span class="comment">; decimal</span><br>
-                    <span class="keyword">MOV</span> <span class="reg">EAX</span>,
-                    <span class="num">0xFF</span>
+                    <span class="keyword">mov</span> <span class="reg">eax</span>,
+                    <span class="hex">0xFF</span>
                     <span class="comment">; same value in hex</span>
                 </div>
                 <h3>Memory references</h3>
                 <div class="code">
-                    <span class="keyword">MOV</span> [<span class="num">0x1000</span>],
-                    <span class="reg">EAX</span>
+                    <span class="keyword">mov</span> [<span class="hex">0x1000</span>],
+                    <span class="reg">eax</span>
                     <span class="comment">; write to address 0x1000</span><br>
-                    <span class="keyword">MOV</span> <span class="reg">EBX</span>,
-                    [<span class="reg">EAX</span>]
-                    <span class="comment">; treat EAX as a memory address and read from it</span>
+                    <span class="keyword">mov</span> <span class="reg">ebx</span>,
+                    [<span class="reg">eax</span>]
+                    <span class="comment">; treat eax as a memory address and read from it</span>
                 </div>
                 <p class="note">
                     *note: everything is case-insensitive so MOV, mov and mOv all work
