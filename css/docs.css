@@ -164,7 +164,7 @@ body {
 .code {
 	background: var(--panel);
 	border-left: 3px solid var(--accent);
-	padding: 11px 16px;
+	padding: 12px 16px;
 	font-size: 14px;
 	line-height: 1.9;
 	margin: 8px 0;
