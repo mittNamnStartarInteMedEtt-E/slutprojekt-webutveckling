@@ -4,32 +4,19 @@ const editor = CodeMirror.fromTextArea(document.getElementById("code-input"), {
     theme: "custom",
     autoCloseBrackets: true,
     matchBrackets: true,
+    lineNumbers: true,
 });
 
 // test program
 
 editor.setValue(
-`%define value 50
-
-section .data
-x dd 42
-y dd 100
+`section .data
+pi dq 3.14159263535
 
 section .text
-mov eax, [x]        ; 42
-add eax, value      ; 92
-mov [0x1000], eax   ; 92 in memory
-mov ebx, [0x1000]   ; 92
-sub ebx, 92         ; 0, zero flag set
-je .ok
-
-.ok:
-    mul eax, 2      ; 184
-    mov ecx, eax
-    jmp .done
-
-.done:
-    println "done"`
+fld [pi]        ; load pi into ST0
+printfl st0     ; print it as a float
+println pi      ; print the address in hex`
 );
 
 // speed slider
@@ -51,7 +38,7 @@ let isRunning = false;
 
 // resets registers, flags, highlights, and the log
 function reset() {
-    for (const reg of ["EAX", "EBX", "ECX", "EDX", "EBP", "ESI", "EDI", "EIP"])
+    for (const reg of ["EAX", "EBX", "ECX", "EDX", "EBP", "ESI", "EDI", "EIP", "ST0", "ST1", "ST2", "ST3", "ST4", "ST5", "ST6", "ST7"])
         cpu.regs[reg] = 0;
 
     cpu.regs.ESP = 1024 * 1024; // stack starts at top of memory
@@ -60,6 +47,7 @@ function reset() {
     cpu.flags.CARRY = false;
     cpu.flags.SIGN = false;
     cpu.flags.OVERFLOW = false;
+    cpu.fpuTop = 0;
 
     // remove the highlighted line from the editor if there is one
     if (highlightedLine !== null) {
@@ -67,7 +55,7 @@ function reset() {
         highlightedLine = null;
     }
 
-    lines = [];
+    executableIndex = [];
     updateUIRegisters();
     updateUIFlags();
 
@@ -111,7 +99,8 @@ document.getElementById("btn-step").addEventListener("click", () => {
     if (cpu.regs.EIP === 0) {
         const errors = validate(editor.getValue());
         if (errors.length > 0) {
-            for (const err of errors) log(err, true);
+            for (const err of errors) 
+                log(err, true);
             return;
         }
         loadProgram(editor.getValue());
@@ -120,6 +109,7 @@ document.getElementById("btn-step").addEventListener("click", () => {
     step();
 });
 
+// make reset button call reset
 document.getElementById("btn-reset").addEventListener("click", reset);
 
 // registers shown in the main panel
@@ -164,16 +154,16 @@ function highlightLine(eip) {
     if (highlightedLine !== null)
         editor.removeLineClass(highlightedLine, "background", "current-line");
 
-    // lineMap translates EIP (instruction index) to the real source line number
-    const srcLine = lineMap[eip];
-    if (srcLine === undefined)
+    // translate EIP to the real source line number
+    const sourceLine = instructionToSourceLine[eip];
+    if (sourceLine === undefined)
         return;
 
-    editor.addLineClass(srcLine, "background", "current-line");
-    highlightedLine = srcLine;
+    editor.addLineClass(sourceLine, "background", "current-line");
+    highlightedLine = sourceLine;
     
     // scroll the editor to find the highlighted line
-    const info = editor.charCoords({ line: srcLine, ch: 0 }, "local"); // relative to editor
+    const info = editor.charCoords({ line: sourceLine, ch: 0 }, "local"); // relative to editor
     editor.scrollTo(null, info.top - 50); // 50px padding from top
 }
 
@@ -202,9 +192,10 @@ const POPUP_GROUPS = [
     { regs: ["ECX", "CX", "CH", "CL"] },
     { regs: ["EDX", "DX", "DH", "DL"] },
     { regs: ["ESP", "EBP", "ESI", "EDI", "EIP"] },
+    { regs: ["ST0", "ST1", "ST2", "ST3", "ST4", "ST5", "ST6", "ST7"] },
 ];
 
-// creates a single register span pair (name + value)
+// creates a single register span pair, name + value
 function makeRegSpan(name) {
     const nameSpan = document.createElement("span");
     nameSpan.className = "reg-name";
@@ -212,7 +203,7 @@ function makeRegSpan(name) {
 
     const valSpan = document.createElement("span");
     valSpan.className = "reg-val";
-    valSpan.textContent = toSigned(cpu.regs[name]);
+    valSpan.textContent = name.startsWith("ST") ? cpu.regs[name] : toSigned(cpu.regs[name]);
 
     return [nameSpan, valSpan];
 }
@@ -228,7 +219,7 @@ function renderRegisterPopup() {
         const section = document.createElement("div");
         section.className = "reg-popup-group";
 
-        // two registers per row
+        // two registers per row, so step by 2
         for (let i = 0; i < group.regs.length; i += 2) {
             const row = document.createElement("div");
             row.className = "reg-popup-row";
@@ -237,7 +228,8 @@ function renderRegisterPopup() {
                 row.appendChild(span);
 
             if (group.regs[i + 1]) {
-                for (const span of makeRegSpan(group.regs[i + 1])) row.appendChild(span);
+                for (const span of makeRegSpan(group.regs[i + 1])) 
+                    row.appendChild(span);
             }
 
             section.appendChild(row);
@@ -330,13 +322,13 @@ function makeVerticalResizer(resizer) {
 
             const stateRect = statePanel.getBoundingClientRect();
 
-            const stateTop = stateRect.top - 16; // top padding
-            const stateHeight = stateRect.height - 32; // padding top + bottom
+            const stateTop = stateRect.top - 16; // top padding, 16px
+            const stateHeight = stateRect.height - 32; // padding top + bottom, 32px
             const topHeight = e.clientY - stateTop;
 
             // clamp values so panels dont get too small
-            const clampedTop = Math.max(100, Math.min(topHeight, stateHeight - 104));
-            const clampedBottom = stateHeight - clampedTop - 4;
+            const clampedTop = Math.max(100, Math.min(topHeight, stateHeight - 104)); // min width + resizer 4px
+            const clampedBottom = stateHeight - clampedTop - 4; // resizer 4 px
 
             regPanel.style.flex = `0 0 ${clampedTop}px`;
             logPanel.style.flex = `0 0 ${clampedBottom}px`;

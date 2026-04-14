@@ -1,21 +1,25 @@
 // i spent 30 minutes writing comments for this
-function createRegisters() {
+function createRegisters(cpu) {
+    const regs = {};
+
     // backing storage for the 4 general purpose register families A, B, C, D
     // Uint32Array forces every value to be a 32 bit unsigned integer
     // this means values automatically wrap around to the negatives on overflow
-    const backing = new Uint32Array(4);
-
-    // maps each register family letter to its index in the backing array
-    const INDEX = { A: 0, B: 1, C: 2, D: 3 };
-    const regs = {};
+    const registerBank = new Uint32Array(4);
+    const STANDARD_REGS = { A: 0, B: 1, C: 2, D: 3 }; // maps each register family to index in backing array
 
     // backing storage for special registers that dont have sub-registers
-    const special = new Uint32Array(5);
-    const SPECIAL = { ESP: 0, EBP: 1, ESI: 2, EDI: 3, EIP: 4 };
+    const specialBank = new Uint32Array(5);
+    const SPECIAL_REGS = { ESP: 0, EBP: 1, ESI: 2, EDI: 3, EIP: 4 };
 
+    // backing storange for the ST0-ST7 registers that handle floating point values
+    // Float64Array is the closest thing to use in javascript
+    // every value is a forced float, that wraps on overflow
+    const floatBank = new Float64Array(8);
 
-    for (const [letter, i] of Object.entries(INDEX)) {
-        // in short, the Object.defineProperty get() function runs every time you read the value
+    // loop over standard regs
+    for (const [letter, i] of Object.entries(STANDARD_REGS)) {
+        // the Object.defineProperty get() function runs every time you read the value
         // while the set() function runs every time you write to it
         // making this really useful cause otherwise i'd have to write functionality for
         // every time i wanted to write or read from the register variables
@@ -28,8 +32,8 @@ function createRegisters() {
 
         // E_X registers
         Object.defineProperty(regs, `E${letter}X`, {
-            get() { return backing[i]; },
-            set(val) { backing[i] = val >>> 0; }
+            get() { return registerBank[i]; },
+            set(val) { registerBank[i] = val >>> 0; }
         });
 
         // AX is the lower 16 bits of EAX
@@ -41,8 +45,8 @@ function createRegisters() {
 
         // _X registers
         Object.defineProperty(regs, `${letter}X`, {
-            get() { return backing[i] & 0xFFFF; },
-            set(val) { backing[i] = (backing[i] & 0xFFFF0000) | (val & 0xFFFF); }
+            get() { return registerBank[i] & 0xFFFF; },
+            set(val) { registerBank[i] = (registerBank[i] & 0xFFFF0000) | (val & 0xFFFF); }
         });
 
         // AH is bits 8 to 15 of EAX (the high byte of AX)
@@ -54,53 +58,71 @@ function createRegisters() {
 
         // _H registers
         Object.defineProperty(regs, `${letter}H`, {
-            get() { return (backing[i] & 0xFF00) >> 8; },
-            set(val) { backing[i] = (backing[i] & 0xFFFF00FF) | ((val & 0xFF) << 8); }
+            get() { return (registerBank[i] & 0xFF00) >> 8; },
+            set(val) { registerBank[i] = (registerBank[i] & 0xFFFF00FF) | ((val & 0xFF) << 8); }
         });
 
         // AL is the lowest 8 bits of EAX
         // getter: & 0xFF isolates bits 0-7, no shifting needed since its already at the bottom
         // 0xDEADBEEF & 0x000000FF = 0x000000EF
         // setter: & 0xFFFFFF00 zeroes out bits 0-7, preserving everything else
-        // | (val & 0xFF) merges in the new low byte
+        // | (val & 0xFF) merges in the new low byte with OR
         // e.g val=0x12: backing becomes 0xDEADBE12
 
         // _L registers
         Object.defineProperty(regs, `${letter}L`, {
-            get() { return backing[i] & 0xFF; },
-            set(val) { backing[i] = (backing[i] & 0xFFFFFF00) | (val & 0xFF); }
+            get() { return registerBank[i] & 0xFF; },
+            set(val) { registerBank[i] = (registerBank[i] & 0xFFFFFF00) | (val & 0xFF); }
         });
     }
 
     // special registers don't have sub-registers, like AH and AL
-    // just a straight 32 bit read/write with >>> 0 clamping on set
+    // just a straight 32 bit read/write with >>> 0 clamping
 
     // ESI, EDI, EBP are included for authenticity but have no special behavior
     // ESP points to the top of the stack, at 1 MB currently
     // EIP points to the current instruction/line, so the first instruction would be 1, second would be 2, etc
-    for (const [name, i] of Object.entries(SPECIAL)) {
+    for (const [name, i] of Object.entries(SPECIAL_REGS)) {
         Object.defineProperty(regs, name, {
-            get() { return special[i]; },
-            set(val) { special[i] = val >>> 0; }
+            get() { return specialBank[i]; },
+            set(val) { specialBank[i] = val >>> 0; }
+        });
+    }
+
+    // float registers, ST0-ST7
+    for (let i = 0; i < 8; i++) {
+        Object.defineProperty(regs, `ST${i}`, {
+            get() {
+                // calculate physical index (top + offset) % 8
+                const index = (cpu.fpuTop + i) % 8;
+                return floatBank[index];
+            },
+            set(val) {
+                const index = (cpu.fpuTop + i) % 8;
+                floatBank[index] = val;
+            }
         });
     }
 
     // initialize stack pointer to the top of memory
     // the stack grows downward so ESP starts at the highest address
-    regs.ESP = 1024 * 1024;
+    regs.ESP = 1024 * 1024; // 1MB
 
     return regs;
 }
 
 const cpu = {
-    regs: createRegisters(),
+    fpuTop: 0, // points to the physical index in floatBank that is currently ST0
     flags: {
         ZERO: false, // zero flag 
         CARRY: false, // carry flag
         SIGN: false, // sign flag
         OVERFLOW: false // overflow flag
-    }
+    },
 };
+cpu.regs = createRegisters(cpu);
+
+
 
 const memory = new Uint8Array(1024 * 1024); // 1 megabyte
 
@@ -136,26 +158,49 @@ function write32(addr, val) {
     memory[addr + 3] = (val >> 24) & 0xFF;
 }
 
+// buffer to help with conversion
+const floatBuffer = new Float64Array(1);
+const floatBytes = new Uint8Array(floatBuffer.buffer);
+
+function writeFloat64(addr, val) {
+    floatBuffer[0] = val;
+    // copy 8 bytes into memory
+    for (let i = 0; i < 8; i++) {
+        memory[addr + i] = floatBytes[i];
+    }
+}
+
+function readFloat64(addr) {
+    // copy 8 bytes from memory
+    for (let i = 0; i < 8; i++) {
+        floatBytes[i] = memory[addr + i];
+    }
+    return floatBuffer[0];
+}
+
 // module level variables
-let lines = [];
-let lineMap = [];
+let executableLines = [];
+let instructionToSourceLine = [];
 let labels = {};
-let dataMap = {};
-let defines = {};
+let dataAddresses = {};
+let macros = {};
+let dataTypes = {};
 
 // scan code for sections, variable definitions and macro definitions
 // applies macro replacements and separates data from text sections
-// returns array of {text, srcLine} keeping original line numbers
+// returns array of {text, sourceLine} keeping original line numbers
 function preprocessCode(code) {
-    lines = [];
-    lineMap = [];
+    executableLines = [];
+    instructionToSourceLine = [];
     labels = {};
-    dataMap = {};
-    defines = {};
+    dataAddresses = {};
+    macros = {};
+    dataTypes = {};
     let section = "text";
-    let memoryPtr = 0;
+    let dataPointer = 0x100;
+
     const rawLines = code.split("\n");
-    const processed = [];
+    const textLines = [];
 
     rawLines.forEach((rawLine, originalLineNum) => {
         // remove everything after semicolon (comments)
@@ -168,12 +213,12 @@ function preprocessCode(code) {
         if (tokens[0].toUpperCase() === "%DEFINE") {
             const macroName = tokens[1].toUpperCase();
             const macroValue = tokens[2];
-            defines[macroName] = macroValue;
+            macros[macroName] = macroValue;
             return;
         }
 
         // substitute all defined macros into the line
-        for (const [macroName, macroValue] of Object.entries(defines)) {
+        for (const [macroName, macroValue] of Object.entries(macros)) {
             rawLine = rawLine.replace(new RegExp(`\\b${macroName}\\b`, "gi"), macroValue);
         }
 
@@ -218,17 +263,18 @@ function preprocessCode(code) {
             const dataHandler = dataInstructions[dataType];
             if (!dataHandler) return;
 
-            dataMap[varName] = memoryPtr;
+            dataTypes[varName] = dataType;
+            dataAddresses[varName] = dataPointer;
             for (const val of dataValues) {
-                memoryPtr = dataHandler(val, memoryPtr);
+                dataPointer = dataHandler(val, dataPointer);
             }
         } else {
             // add text section line with original line number
-            processed.push({ text: rawLine, srcLine: originalLineNum });
+            textLines.push({ text: rawLine, sourceLine: originalLineNum });
         }
     });
 
-    return processed;
+    return textLines;
 }
 
 
@@ -244,7 +290,8 @@ function parseLine(line) {
 
     // preserve string literals (dont uppercase quoted strings)
     operands = operands.map(operand => {
-        if (operand.startsWith('"') && operand.endsWith('"'))
+        if (operand.startsWith('"') && operand.endsWith('"') ||
+            operand.startsWith("'") && operand.endsWith("'"))
             return operand;
         return operand.toUpperCase();
     });
@@ -257,28 +304,28 @@ function loadProgram(code) {
     const preprocessed = preprocessCode(code);
     const codeText = preprocessed.map(p => p.text).join("\n");
     const codeLines = codeText.split("\n");
-    const instructionList = [];
+    const parsedInstructions = [];
 
     // parse each line and attach original line number
-    codeLines.forEach((rawCode, idx) => {
+    codeLines.forEach((rawCode, i) => {
         const parsedLine = parseLine(rawCode);
         if (parsedLine) {
-            parsedLine.srcLine = preprocessed[idx].srcLine;
-            instructionList.push(parsedLine);
+            parsedLine.sourceLine = preprocessed[i].sourceLine;
+            parsedInstructions.push(parsedLine);
         }
     });
 
     // build label map and instruction list, skipping label definitions
-    let instrIdx = 0;
-    instructionList.forEach(instruction => {
+    let executableIndex = 0;
+    parsedInstructions.forEach(instruction => {
         if (instruction.raw.endsWith(":")) {
             // label definition, map label name to instruction index
-            labels[instruction.raw.slice(0, -1)] = instrIdx;
+            labels[instruction.raw.slice(0, -1)] = executableIndex;
         } else {
             // actual instruction, add to executable list
-            lines.push(instruction);
-            lineMap.push(instruction.srcLine);
-            instrIdx++;
+            executableLines.push(instruction);
+            instructionToSourceLine.push(instruction.sourceLine);
+            executableIndex++;
         }
     });
 }
@@ -292,40 +339,77 @@ function isValidArg(str) {
 
 // check for syntax errors in assembly code
 function validate(code) {
-    const preprocessed = preprocessCode(code);
-    const codeText = preprocessed.map(p => p.text).join("\n");
-
     const jumpOps = ["JMP", "JE", "JNE", "JG", "JGE", "JL", "JLE", "CALL", "LOOP"];
-    const instructionList = codeText.split("\n").map(parseLine).filter(line => line !== null);
+    const printOps = ["PRINT", "PRINTLN", "PRINTC", "PRINTS", "PRINTI", "PRINTFL"];
     const errorList = [];
+
+    const preprocessed = preprocessCode(code);
+    const parsedInstructions = preprocessed.map(p => {
+        const parsed = parseLine(p.text);
+        if (parsed)
+            parsed.sourceLine = p.sourceLine;
+        return parsed;
+    }).filter(line => line !== null);
+
 
     // collect all label names first
     const labelNames = {};
-    instructionList.forEach(instruction => {
+    parsedInstructions.forEach(instruction => {
         if (instruction.raw.toUpperCase().endsWith(":"))
             labelNames[instruction.raw.slice(0, -1).toUpperCase()] = true;
     });
 
     // validate each instruction
-    instructionList.forEach((instruction, idx) => {
+    parsedInstructions.forEach((instruction) => {
         if (instruction.raw.endsWith(":"))
             return; // skip label definitions
 
         // check for unknown instructions
         if (!instructions[instruction.op])
-            errorList.push(`line ${idx + 1}: unknown instruction '${instruction.op}'`);
+            errorList.push(`line ${instruction.sourceLine + 1}: unknown instruction '${instruction.op}'`);
 
         // check jump target validity
         if (jumpOps.includes(instruction.op)) {
             if (!labelNames[instruction.args[0]])
-                errorList.push(`line ${idx + 1}: unknown label '${instruction.args[0]}'`);
+                errorList.push(`line ${instruction.sourceLine + 1}: unknown label '${instruction.args[0]}'`);
             return; // skip argument validation for jumps
+        }
+
+        // check print instruction arguments
+        if (printOps.includes(instruction.op)) {
+            const arg = instruction.args[0];
+
+            // check printc 
+            if (instruction.op === "PRINTC") {
+                if (!arg.startsWith("'") && !arg.endsWith("'")) {
+                    if (arg.split(1, -1).length() !== 1) {
+                        errorList.push(`line ${instruction.sourceLine + 1}: PRINTC expects a single char, never 'char'`)
+                    } else {
+                        errorList.push(`line ${instruction.sourceLine + 1}: PRINTC expects a char in single quotes, like 'c'`);
+                    }
+                }
+            } else if (instruction.op === "PRINTS") {
+                if (!arg.startsWith('"') && !arg.endsWith('"')) {
+                    errorList.push(`line ${instruction.sourceLine + 1}: PRINTS expects a string in double quotes, like "hello"`);
+                }
+            } else if (instruction.op === "PRINTI") {
+                if (arg.includes(".")) {
+                    errorList.push(`line ${instruction.sourceLine + 1}: PRINTI expects an int, like 7`);
+                }
+            } else if (instruction.op === "PRINTFL") {
+                const isRegister = cpu.regs[arg] !== undefined;
+                const isMemRef = arg.startsWith("[") && arg.endsWith("]");
+                const isFloat = !isNaN(Number(arg)) && arg.includes(".");
+                if (!isRegister && !isMemRef && !isFloat)
+                    errorList.push(`line ${instruction.sourceLine + 1}: PRINTFL expects a float, like 3.14`);
+            }
+            return; // skip argument validation for prints
         }
 
         // check argument validity
         instruction.args.forEach(arg => {
             if (!isValidArg(arg))
-                errorList.push(`line ${idx + 1}: invalid argument '${arg}'`);
+                errorList.push(`line ${instruction.sourceLine + 1}: invalid argument '${arg}'`);
         });
     });
 
@@ -339,28 +423,68 @@ function validate(code) {
 // handles registers, data variables, memory references, hex literals, and decimal numbers
 // example: "EAX" returns register value, "VAR" returns data address, "[EAX]" reads from memory, "0xFF" returns 255
 function resolveVal(operand) {
-    // check if it's a register
+    // check if its a register
     if (cpu.regs[operand] !== undefined)
         return cpu.regs[operand];
 
-    // check if it's a string literal
+    // check if its a string literal
     if (operand.startsWith('"') && operand.endsWith('"'))
         return operand;
 
-    // check if it's a memory reference like [EAX] or [0x1000]
+    // check if its a memory reference like [EAX] or [0x1000]
     if (operand.startsWith("[") && operand.endsWith("]"))
         return read32(resolveVal(operand.slice(1, -1)));
 
-    // check if it's a hex literal
+    // check for hex literal
     if (operand.startsWith("0X"))
         return parseInt(operand, 16);
 
-    // check if it's a data variable name
-    if (dataMap[operand] !== undefined)
-        return dataMap[operand];
+    // check for data variable name
+    if (dataAddresses[operand] !== undefined)
+        return dataAddresses[operand];
 
-    // assume it's a decimal number
     return Number(operand);
+}
+
+// handles values like resolveVal, but for floats
+function resolveFloatVal(operand) {
+    // if register
+    if (cpu.regs[operand] !== undefined) {
+        return cpu.regs[operand];
+    }
+
+    // if memory reference
+    if (operand.startsWith("[") && operand.endsWith("]")) {
+        const addr = resolveVal(operand.slice(1, -1));
+        return readFloat64(addr); 
+    }
+
+    return Number(operand);
+}
+
+// helper that resolves a value for printing
+function resolvePrintVal(val) {
+    if (val.startsWith("[") && val.endsWith("]")) {
+        const varName = val.slice(1, -1);
+        if (dataTypes[varName] === "DB") {
+            let addr = dataAddresses[varName];
+            let str = "";
+            while (memory[addr] !== 0)
+                str += String.fromCharCode(memory[addr++]);
+            return str;
+        } else {
+            return read32(resolveVal(varName));
+        }
+    } else if (val.startsWith('"') && val.endsWith('"') ||
+               val.startsWith("'") && val.startsWith("'")) {
+        return val.slice(1, -1).replace(/\\n/g, "\n");
+    } else {
+        const resolved = resolveVal(val);
+        if (typeof resolved === "number" && dataAddresses[val] !== undefined) {
+            return "0x" + resolved.toString(16).toUpperCase();
+        }
+        return resolved;
+    }
 }
 
 // write a value to either a register or memory address
@@ -368,8 +492,19 @@ function resolveVal(operand) {
 // otherwise write directly to the register
 function writeDst(destination, value) {
     if (destination.startsWith("[") && destination.endsWith("]")) {
-        // memory write: resolve address and store value
+        // memory write
         write32(resolveVal(destination.slice(1, -1)), value);
+    } else {
+        // register write
+        cpu.regs[destination] = value;
+    }
+}
+
+// same but for floats
+function writeFloatDst(destination, value) {
+    if (destination.startsWith("[") && destination.endsWith("]")) {
+        // memory write
+        writeFloat64(resolveVal(destination.slice(1, -1)), value);
     } else {
         // register write
         cpu.regs[destination] = value;
@@ -493,7 +628,8 @@ const instructions = {
 
     // decrement dest by 1
     DEC(args) {
-        const result = resolveVal(args[0]) - 1;
+        const a = resolveVal(args[0]);
+        const result = a - 1;
 
         const overflow = (a === 0x80000000);
 
@@ -656,30 +792,35 @@ const instructions = {
         cpu.regs.ESP += 4;
     },
 
+    // print character, if string print the first character
+    PRINTC(args) {
+        const char = resolvePrintVal(args[0]);
+        log(char[0]);
+    },
+
+    PRINTS(args) {
+        const string = resolvePrintVal(args[0]);
+        log(string);
+    },
+
+    PRINTI(args) {
+        const integer = resolveVal(args[0]);
+        log(integer);
+    },
+    
+    PRINTFL(args) {
+        const float = resolveFloatVal(args[0]);
+        log(float);
+    },
+
     PRINT(args) {
-        const val = args[0];
-        if (val.startsWith("[") && val.endsWith("]")) {
-            let addr = resolveVal(val.slice(1, -1));
-            let str = "";
-            while (memory[addr] !== 0)
-                str += String.fromCharCode(memory[addr++]);
-            log(str, false, false);
-        } else {
-            log(resolveVal(val), false, false);
-        }
+        const str = resolvePrintVal(args[0]);
+        log(str);
     },
 
     PRINTLN(args) {
-        const val = args[0];
-        if (val.startsWith("[") && val.endsWith("]")) {
-            let addr = resolveVal(val.slice(1, -1));
-            let str = "";
-            while (memory[addr] !== 0)
-                str += String.fromCharCode(memory[addr++]);
-            log(str, false, true);
-        } else {
-            log(resolveVal(val), false, true);
-        }
+        const str = resolvePrintVal(args[0]);
+        log(str, false, true);
     },
 
     // no operation
@@ -694,6 +835,31 @@ const instructions = {
             cpu.regs.EIP = labels[args[0]];
     },
 
+    // float load, pushes a value, so moves pointer then stores
+    FLD(args) {
+        const val = resolveFloatVal(args[0]);
+        cpu.fpuTop = (cpu.fpuTop - 1) & 7; // decrement ptr, stays in range 0-7
+        cpu.regs.ST0 = val;
+    },
+
+    // float add
+    FADD(args) {
+        const a = resolveFloatVal(args[0]);
+        const b = resolveFloatVal(args[1]);
+
+        const result = a + b;
+
+        updateFlags(result);
+        writeFloatDst(args[0], result)
+    },
+
+    // store float, pops a value, so moves pointer then stores
+    FSTP(args) {
+        const val = cpu.regs.ST0;
+
+        writeFloatDst(args[0], val);
+        cpu.fpuTop = (cpu.fpuTop + 1) & 7; // increment ptr, stays in range 0-7
+    }
 };
 
 // assembly data section definition instructions
@@ -722,6 +888,12 @@ const dataInstructions = {
         write32(dataPtr, Number(value));
         return dataPtr + 4;
     },
+
+    // define quad word (8 bytes)
+    DQ(value, dataPtr) {
+        writeFloat64(dataPtr, Number(value));
+        return dataPtr + 8;
+    }
 };
 
 // execute a single instruction with ui updates
@@ -736,10 +908,10 @@ function execute(instruction) {
 
 // execute one instruction, incrementing eip if no jump occurred
 function step() {
-    if (cpu.regs.EIP >= lines.length)
+    if (cpu.regs.EIP >= executableLines.length)
         return;
 
-    const currentInstruction = lines[cpu.regs.EIP];
+    const currentInstruction = executableLines[cpu.regs.EIP];
     const eipBefore = cpu.regs.EIP;
 
     execute(currentInstruction);
@@ -756,7 +928,7 @@ function step() {
 function run(delay) {
     const executionTimer = setInterval(() => {
         step();
-        if (cpu.regs.EIP >= lines.length) {
+        if (cpu.regs.EIP >= executableLines.length) {
             clearInterval(executionTimer);
             isRunning = false;
             document.querySelector("#btn-run").disabled = false;

@@ -1,17 +1,18 @@
 /* variables */
 
 :root {
-	--bg:          #0C1E35;
-	--panel:       #1A2942;
-	--border:      #2a3f5f;
-	--accent:      #60A5FA;
+	--bg: #0C1E35;
+	--panel: #1A2942;
+	--border: #2a3f5f;
+	--accent: #60A5FA;
 	--accent-dark: #2a5fb4;
-	--error:       #F87171;
-	--text:        #E0F2FE;
-	--muted:       #7DD3FC;
-	--purple:      #a78bfa;
-	--yellow:      #FBBF24;
-	--orange:      #fb923c;
+	--error: #F87171;
+	--text: #E0F2FE;
+	--muted: #7DD3FC;
+	--purple: #a78bfa;
+	--yellow: #FBBF24;
+	--orange: #fb923c;
+	--section: #00ff15;
 }
 
 * {
@@ -56,6 +57,7 @@ body {
 	min-height: 3px;
 	min-width: 4px;
 	background: var(--border);
+	user-select: none;
 }
 
 .resizer:hover {
@@ -73,6 +75,7 @@ body {
 	bottom: 0;
 	left: -4px;
 	right: -4px;
+	user-select: none;
 }
 
 .resizer-vertical {
@@ -173,11 +176,21 @@ button:hover,
 /* code editor */
 
 .CodeMirror {
-	height: calc(100vh - 116px) !important; /* !important needed, CodeMirror stylesheets are aggressive */
+	height: calc(100vh - 116px) !important; /* !important needed because CodeMirror stylesheets are aggressive */
 	background: var(--bg) !important;
 	color: var(--text) !important;
-	font-size: 16px;
 	border: 1px solid var(--border);
+	font-size: 16px;
+}
+
+.CodeMirror-gutters {
+    background: var(--bg) !important;
+    border-right: 1px solid var(--border) !important;
+}
+
+.CodeMirror-linenumber {
+    color: var(--muted) !important;
+    padding: 0 8px !important;
 }
 
 .CodeMirror-cursor {
@@ -190,12 +203,14 @@ button:hover,
 }
 
 /* syntax highlighting */
+
 .cm-s-custom .cm-keyword { color: var(--error); }
 .cm-s-custom .cm-variable { color: var(--accent); }
 .cm-s-custom .cm-number { color: var(--orange); }
 .cm-s-custom .cm-comment { color: var(--muted); font-style: italic; }
 .cm-s-custom .cm-hex { color: var(--purple); }
 .cm-s-custom .cm-label { color: var(--text); }
+.cm-s-custom .cm-section { color: var(--section); }
 
 /* registers */
 
