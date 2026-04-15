@@ -79,7 +79,7 @@
                     <div class="op">esp</div>
                     <div>Stack Pointer</div>
                     <div>
-                        points to the top of the stack. PUSH decreases it, pop increases
+                        points to the top of the stack. push decreases it, pop increases
                         it. starts at 1MB.
                     </div>
                 </div>
@@ -87,7 +87,7 @@
                     <div class="op">ebp</div>
                     <div>Base Pointer</div>
                     <div>
-                        usually marks the bottom of the current function's stack frame.
+                        general purpose, traditionally marks the bottom of the current function's stack frame.
                     </div>
                 </div>
                 <div class="row">
@@ -107,6 +107,28 @@
                     *note: currently only eip and esp have functionality attached to
                     them.
                 </p>
+                <h3>Floating Point Registers</h3>
+                <p>
+                    The registers <span class="op">st0</span> - <span class="op">st7</span> are all specifically designed to handle floating point values.
+                    Attempting to store a float like <span class="num">3.14</span> in <span class="op">eax</span> would end up clamping the value and reducing
+                    it simply to <span class="num">3</span>.
+                </p>
+                <p>
+                    Unlike the general purpose registers, the float registers work as a stack.
+                    This means you don't write to them directly. Instead you push and pop values using
+                    <span class="op">fld</span> and <span class="op">fstp</span>.
+                    <span class="op">st0</span> is always the top of the stack, and pushing a new value
+                    shifts everything down.
+                </p>
+                <p>
+                    For example, if you load two values with <span class="op">fld</span>, the first one
+                    ends up in <span class="op">st1</span> and the second in <span class="op">st0</span>,
+                    since <span class="op">st0</span> is always the most recently pushed value.
+                </p>
+                <p class="note">
+                    *note: these registers are based on the x87 FPU registers from real x86, but simplified.
+                    Real x87 uses 80-bit extended precision internally, while this emulator uses 64-bit double precision.
+                </p>
             </div>
             <!-- flags -->
             <div class="section" id="flags">
@@ -114,7 +136,7 @@
                 <p>
                     Flags are set automatically after arithmetic and cmp instructions.
                     the jump instructions then read them to decide whether to jump or
-                    not
+                    not.
                 </p>
                 <div class="row-header">
                     <div>flag</div>
@@ -184,7 +206,7 @@
                 </p>
                 <p class="note">
                     *note: the <span class="keyword">.text</span> section is where
-                    execution starts. Any instructions placed outside a section are
+                    execution starts. any instructions placed outside a section are
                     assumed to be in <span class="keyword">.text</span>.
                 </p>
             </div>
@@ -222,6 +244,14 @@
                     <div>
                         <span class="reg">value</span> <span class="keyword">dd</span>
                         <span class="hex">0x12345678</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">dq</div>
+                    <div>8 bytes (quad word), used for floats</div>
+                    <div>
+                        <span class="reg">pi</span> <span class="keyword">dq</span>
+                        <span class="num">3.1415</span>
                     </div>
                 </div>
                 <p class="note">
@@ -340,10 +370,10 @@
                     </div>
                 </div>
                 <div class="row">
-                    <div class="op">DIV</div>
+                    <div class="op">div</div>
                     <div>divides dest by src. dont divide by zero.</div>
                     <div>
-                        <span class="keyword">DIV</span> <span class="reg">eax</span>,
+                        <span class="keyword">div</span> <span class="reg">eax</span>,
                         <span class="num">2</span>
                     </div>
                 </div>
@@ -362,10 +392,57 @@
                     </div>
                 </div>
                 <div class="row">
+                    <div class="op">fld</div>
+                    <div>loads a float onto the top of the float stack (st0)</div>
+                    <div>
+                        <span class="keyword">fld</span> <span class="num">3.1415</span><br>
+                        <span class="keyword">fld</span> [<span class="reg">pi</span>]
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">fstp</div>
+                    <div>stores st0 into a destination then pops it off the float stack</div>
+                    <div>
+                        <span class="keyword">fstp</span> [<span class="reg">result</span>]
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">fadd</div>
+                    <div>adds two float values, stores result in dest</div>
+                    <div>
+                        <span class="keyword">fadd</span> <span class="reg">st0</span>,
+                        <span class="reg">st1</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">fsub</div>
+                    <div>subtracts src from dest, both floats</div>
+                    <div>
+                        <span class="keyword">fsub</span> <span class="reg">st0</span>,
+                        <span class="reg">st1</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">fmul</div>
+                    <div>multiplies dest by src, both floats</div>
+                    <div>
+                        <span class="keyword">fmul</span> <span class="reg">st0</span>,
+                        <span class="reg">st1</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">fdiv</div>
+                    <div>divides dest by src, both floats. dont divide by zero.</div>
+                    <div>
+                        <span class="keyword">fdiv</span> <span class="reg">st0</span>,
+                        <span class="reg">st1</span>
+                    </div>
+                </div>
+                <div class="row">
                     <div class="op">cmp</div>
                     <div>
-                        updates cpu flags. compares if greater than or equal to and sets
-                        appropriate flags
+                        updates CPU flags. compares if greater than or equal to and sets
+                        appropriate flags.
                     </div>
                     <div>
                         <span class="keyword">cmp</span> <span class="reg">ecx</span>,
@@ -532,6 +609,34 @@
                     </div>
                 </div>
                 <div class="row">
+                    <div class="op">jz</div>
+                    <div>jumps if zero flag is set, same as je</div>
+                    <div>
+                        <span class="keyword">jz</span> <span class="label">.label</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">jnz</div>
+                    <div>jumps if zero flag is not set, same as jne</div>
+                    <div>
+                        <span class="keyword">jnz</span> <span class="label">.label</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">js</div>
+                    <div>jumps if sign flag is set, meaning the last result was negative</div>
+                    <div>
+                        <span class="keyword">js</span> <span class="label">.label</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">jns</div>
+                    <div>jumps if sign flag is not set</div>
+                    <div>
+                        <span class="keyword">jns</span> <span class="label">.label</span>
+                    </div>
+                </div>
+                <div class="row">
                     <div class="op">loop</div>
                     <div>decrements ecx then jumps to label if ecx is not zero</div>
                     <div>
@@ -557,9 +662,7 @@
                 <div class="code">
                     <span class="comment">; standard function call</span><br>
                     <span class="keyword">push</span> <span class="reg">eax</span><br>
-                    <span class="keyword">call</span> <span class="label">.func</span><br>
-                    <span class="keyword">ret</span> <span class="reg">eax</span><br>
-                    <br>
+                    <span class="keyword">call</span> <span class="label">.func</span><br><br>
                     <span class="label">.func:</span><br>
                     <span class="keyword">mov</span> <span class="reg">eax</span>,
                     <span class="num">99</span><br>
@@ -608,7 +711,7 @@
                 </div>
                 <div class="row">
                     <div class="op">print</div>
-                    <div>prints a register value or string to the output panel, no newline</div>
+                    <div>prints a value or string to the output panel, no newline</div>
                     <div>
                         <span class="keyword">print</span> <span class="reg">eax</span><br>
                         <span class="keyword">print</span> "hello"
@@ -620,6 +723,36 @@
                     <div>
                         <span class="keyword">println</span> <span class="reg">eax</span><br>
                         <span class="keyword">println</span> "hello"
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">printc</div>
+                    <div>prints a single character</div>
+                    <div>
+                        <span class="keyword">printc</span> 'A'
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">prints</div>
+                    <div>prints a string in double quotes</div>
+                    <div>
+                        <span class="keyword">prints</span> "hello"
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">printi</div>
+                    <div>prints an integer value from a register or literal</div>
+                    <div>
+                        <span class="keyword">printi</span> <span class="reg">eax</span><br>
+                        <span class="keyword">printi</span> <span class="num">42</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">printfl</div>
+                    <div>prints a float value from a float register or literal</div>
+                    <div>
+                        <span class="keyword">printfl</span> <span class="reg">st0</span><br>
+                        <span class="keyword">printfl</span> <span class="num">3.14</span>
                     </div>
                 </div>
                 <div class="row">
@@ -643,7 +776,7 @@
                 <h3>Labels</h3>
                 <p>
                     A label is just a name followed by a colon. The dot at the start is
-                    optional but often used to make labels easier to distinguish from variables and other identifiers
+                    optional but often used to make labels easier to distinguish from variables and other identifiers.
                 </p>
                 <div class="code">
                     <span class="label">.loop:</span><br>
@@ -665,7 +798,9 @@
                     <span class="comment">; write to address 0x1000</span><br>
                     <span class="keyword">mov</span> <span class="reg">ebx</span>,
                     [<span class="reg">eax</span>]
-                    <span class="comment">; treat eax as a memory address and read from it</span>
+                    <span class="comment">; treat eax as a memory address and read from it</span><br><br>
+                    <span class="comment">; to get the address of a variable, remove the brackets</span><br>
+                    <span class="keyword">mov</span> <span class="reg">eax</span>, myVar
                 </div>
                 <p class="note">
                     *note: everything is case-insensitive so MOV, mov and mOv all work

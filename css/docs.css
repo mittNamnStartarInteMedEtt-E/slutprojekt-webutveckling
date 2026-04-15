@@ -126,7 +126,7 @@ body {
 	color: var(--text);
 	font-size: 14px;
 	line-height: 1.6;
-	margin-bottom: 8px;
+	margin-bottom: 16px;
 }
 
 /* instruction table */
@@ -181,6 +181,8 @@ body {
 .note {
 	margin-top: 12px;
 }
+
+/* changes for mobile */
 
 @media (max-width: 768px) {
 	.row,

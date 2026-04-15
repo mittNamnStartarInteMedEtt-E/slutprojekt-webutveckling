@@ -108,6 +108,11 @@ function createRegisters(cpu) {
     // the stack grows downward so ESP starts at the highest address
     regs.ESP = 1024 * 1024; // 1MB
 
+    // clears float slot
+    regs.clearFloatSlot = function() {
+        floatBank[cpu.fpuTop] = 0;
+    };
+
     return regs;
 }
 
@@ -121,8 +126,6 @@ const cpu = {
     },
 };
 cpu.regs = createRegisters(cpu);
-
-
 
 const memory = new Uint8Array(1024 * 1024); // 1 megabyte
 
@@ -467,11 +470,15 @@ function resolvePrintVal(val) {
     if (val.startsWith("[") && val.endsWith("]")) {
         const varName = val.slice(1, -1);
         if (dataTypes[varName] === "DB") {
+            // string
             let addr = dataAddresses[varName];
             let str = "";
             while (memory[addr] !== 0)
                 str += String.fromCharCode(memory[addr++]);
             return str;
+        } else if (dataTypes[varName] === "DQ") {
+            // float
+            return readFloat64(resolveVal(varName));
         } else {
             return read32(resolveVal(varName));
         }
@@ -571,7 +578,11 @@ const instructions = {
     DIV(args) {
         const a = resolveVal(args[0]);
         const b = resolveVal(args[1]);
-        const result = Math.floor(a / b);
+        let result = Math.floor(a / b);
+
+        if (b === 0) {
+            result = undefined;
+        }
 
         updateFlags(result);
         writeDst(args[0], result);
@@ -635,6 +646,66 @@ const instructions = {
 
         updateFlags(result, cpu.flags.CARRY, overflow);
         writeDst(args[0], result);
+    },
+
+    // load float, pushes a value, so moves pointer then stores
+    FLD(args) {
+        const val = resolveFloatVal(args[0]);
+        cpu.fpuTop = (cpu.fpuTop - 1) & 7; // decrement ptr, stays in range 0-7
+        cpu.regs.ST0 = val;
+    },
+
+    // store float, pops a value, so stores value then moves pointer
+    FSTP(args) {
+        const val = cpu.regs.ST0;
+
+        writeFloatDst(args[0], val);
+        cpu.regs.clearFloatSlot();
+        cpu.fpuTop = (cpu.fpuTop + 1) & 7; // increment ptr, stays in range 0-7
+    },
+
+    // same as add but for floats
+    FADD(args) {
+        const a = resolveFloatVal(args[0]);
+        const b = resolveFloatVal(args[1]);
+
+        const result = a + b;
+
+        updateFlags(result);
+        writeFloatDst(args[0], result)
+    },
+
+    // same as sub but for floats
+    FSUB(args) {
+        const a = resolveFloatVal(args[0]);
+        const b = resolveFloatVal(args[1]);
+
+        const result = a - b;
+    
+        updateFlags(result);
+        writeFloatDst(args[0], result);
+    },
+
+    // same as mul but for floats
+    FMUL(args) {
+        const a = resolveFloatVal(args[0]);
+        const b = resolveFloatVal(args[1]);
+
+        const result = a * b;
+
+        updateFlags(result);
+        writeFloatDst(args[0], result);
+    },
+
+    // same as div but for floats
+    FDIV(args) {
+        const a = resolveFloatVal(args[0]);
+        const b = resolveFloatVal(args[1]);
+
+        let result = b == 0.0 ? undefined : a / b;
+
+        updateFlags(result);
+        writeFloatDst(args[0], result);
     },
 
     // compare dest and src (by subtracting)
@@ -834,32 +905,6 @@ const instructions = {
         if (cpu.regs.ECX !== 0)
             cpu.regs.EIP = labels[args[0]];
     },
-
-    // float load, pushes a value, so moves pointer then stores
-    FLD(args) {
-        const val = resolveFloatVal(args[0]);
-        cpu.fpuTop = (cpu.fpuTop - 1) & 7; // decrement ptr, stays in range 0-7
-        cpu.regs.ST0 = val;
-    },
-
-    // float add
-    FADD(args) {
-        const a = resolveFloatVal(args[0]);
-        const b = resolveFloatVal(args[1]);
-
-        const result = a + b;
-
-        updateFlags(result);
-        writeFloatDst(args[0], result)
-    },
-
-    // store float, pops a value, so moves pointer then stores
-    FSTP(args) {
-        const val = cpu.regs.ST0;
-
-        writeFloatDst(args[0], val);
-        cpu.fpuTop = (cpu.fpuTop + 1) & 7; // increment ptr, stays in range 0-7
-    }
 };
 
 // assembly data section definition instructions

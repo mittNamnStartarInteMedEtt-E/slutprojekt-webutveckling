@@ -11,12 +11,34 @@ const editor = CodeMirror.fromTextArea(document.getElementById("code-input"), {
 
 editor.setValue(
 `section .data
-pi dq 3.14159263535
+a dq 10.0
+b dq 3.0
+result dq 0.0
 
 section .text
-fld [pi]        ; load pi into ST0
-printfl st0     ; print it as a float
-println pi      ; print the address in hex`
+fld [a]         ; ST0 = 10.0
+fld [b]         ; ST0 = 3.0, ST1 = 10.0
+
+fadd st0, st1   ; ST0 = 13.0
+printfl st0     ; prints 13.0
+print "\\n"
+
+fsub st0, st1   ; ST0 = 3.0
+printfl st0     ; prints 3.0
+print "\\n"
+
+fmul st0, st1   ; ST0 = 30.0
+printfl st0     ; prints 30.0
+print "\\n"
+
+fdiv st0, st1   ; ST0 = 3.0
+printfl st0     ; prints 3.0
+print "\\n"
+
+fstp [result]   ; store 3.0 in result, pop
+printfl st0     ; ST0 = 10.0 (was ST1 before pop)
+print "\\n"
+print [result]`
 );
 
 // speed slider
@@ -240,7 +262,11 @@ function renderRegisterPopup() {
 
 function openRegisterPopup() {
     renderRegisterPopup();
-    document.getElementById("reg-popup").style.display = "block";
+    if (document.getElementById("reg-popup").style.display === "block") {
+        document.getElementById("reg-popup").style.display = "none";
+    } else {
+        document.getElementById("reg-popup").style.display = "block"
+    }
 }
 
 function closeRegisterPopup() {
