@@ -181,6 +181,7 @@ button:hover,
 	color: var(--text) !important;
 	border: 1px solid var(--border);
 	font-size: 16px;
+	overflow: hidden;
 }
 
 .CodeMirror-gutters {
@@ -191,6 +192,19 @@ button:hover,
 .CodeMirror-linenumber {
     color: var(--muted) !important;
     padding: 0 8px !important;
+}
+
+.CodeMirror-activeline-background {
+    background: rgba(42, 63, 95, 0.3) !important;
+}
+
+.CodeMirror-activeline-gutter {
+    background: var(--border) !important;
+}
+
+.CodeMirror-activeline .CodeMirror-linenumber {
+    color: var(--accent) !important;
+    font-weight: bold;
 }
 
 .CodeMirror-cursor {

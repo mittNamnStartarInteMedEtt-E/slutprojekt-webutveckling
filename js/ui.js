@@ -3,6 +3,7 @@ const editor = CodeMirror.fromTextArea(document.getElementById("code-input"), {
     mode: "asm",
     theme: "custom",
     autoCloseBrackets: true,
+    styleActiveLine: true,
     matchBrackets: true,
     lineNumbers: true,
 });
@@ -11,34 +12,13 @@ const editor = CodeMirror.fromTextArea(document.getElementById("code-input"), {
 
 editor.setValue(
 `section .data
-a dq 10.0
-b dq 3.0
-result dq 0.0
+msg db "Hello, x86", 0
 
 section .text
-fld [a]         ; ST0 = 10.0
-fld [b]         ; ST0 = 3.0, ST1 = 10.0
-
-fadd st0, st1   ; ST0 = 13.0
-printfl st0     ; prints 13.0
-print "\\n"
-
-fsub st0, st1   ; ST0 = 3.0
-printfl st0     ; prints 3.0
-print "\\n"
-
-fmul st0, st1   ; ST0 = 30.0
-printfl st0     ; prints 30.0
-print "\\n"
-
-fdiv st0, st1   ; ST0 = 3.0
-printfl st0     ; prints 3.0
-print "\\n"
-
-fstp [result]   ; store 3.0 in result, pop
-printfl st0     ; ST0 = 10.0 (was ST1 before pop)
-print "\\n"
-print [result]`
+print "Address of msg: "
+println msg
+print "Value of msg: "
+print [msg]`
 );
 
 // speed slider
