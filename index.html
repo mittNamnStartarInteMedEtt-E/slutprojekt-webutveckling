@@ -9,17 +9,14 @@
     <script src="js/asm.js" defer></script>
     <script src="js/ui.js" defer></script>
 
-    <!-- import codemirror (for better textarea) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <!-- import codemirror (for better textarea) -->    
+    <link rel="stylesheet" href="lib/codemirror/main/codemirror.css" defer>
+    <script src="lib/codemirror/main/codemirror.js" defer></script>
     <!-- codemirror addons -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
-    <script src="js/codemirror/highlighting.js"></script>
-
-    <!-- import google font -->
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+    <script src="lib/codemirror/addon/edit/matchbrackets.js" defer></script>
+    <script src="lib/codemirror/addon/edit/closebrackets.js" defer></script>
+    <script src="lib/codemirror/addon/selection/active-line.js" defer></script>
+    <script src="js/codemirror/highlighting.js" defer></script>
 </head>
 
 <body>
@@ -67,8 +64,8 @@
                     <div class="register" id="reg-EDX">
                         EDX: <span class="reg-value">0</span>
                     </div>
-                    <div class="register" id="reg-ESI">
-                        ESI: <span class="reg-value">0</span>
+                    <div class="register" id="reg-ST0">
+                        ST0: <span class="reg-value">0.0</span>
                     </div>
                 </div>
                 <h2>FLAGS</h2>

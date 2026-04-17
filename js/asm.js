@@ -578,11 +578,8 @@ const instructions = {
     DIV(args) {
         const a = resolveVal(args[0]);
         const b = resolveVal(args[1]);
-        let result = Math.floor(a / b);
 
-        if (b === 0) {
-            result = undefined;
-        }
+        let result = b == 0.0 ? undefined : Math.floor(a / b);
 
         updateFlags(result);
         writeDst(args[0], result);
@@ -905,6 +902,50 @@ const instructions = {
         if (cpu.regs.ECX !== 0)
             cpu.regs.EIP = labels[args[0]];
     },
+
+    // reads from the terminal and outputs it to dest, if argument is omitted, write to EBP
+    async READI(args) {
+        const dest = args[0] || "EBP";
+        const input = await waitForInput();
+        let val = Number(input);
+        // if NaN then 0
+        val = isNaN(val) ? 0 : val;
+
+        writeDst(dest, val);
+    },
+
+    // same as READI but for floats
+    async READFL(args) {
+        const dest = args[0] || "EBP";
+        const input = await waitForInput();
+        let val = Number(input);
+
+        // if NaN then 0
+        val = isNaN(val) ? 0 : val;
+        writeFloatDst(dest, val);
+    },
+
+    // same as READI but for strings, stores a pointer in dest
+    async READS(args) {
+        const dest = args[0] || "EBP";
+        const input = await waitForInput();
+    
+        // write string into memory at 0x2000, the fixed input memory address
+        const bufferAddr = 0x2000;
+        for (let i = 0; i < input.length; i++)
+            write8(bufferAddr + i, input.charCodeAt(i));
+        write8(bufferAddr + input.length, 0); // null terminator
+    
+        writeDst(dest, bufferAddr);
+    },
+
+    async READC(args) {
+        const dest = args[0] || "EBP";
+        const input = await waitForInput();
+
+        // write char into memory at 0x2000
+        write8(0x2000, input.charCodeAt(0));
+    },
 };
 
 // assembly data section definition instructions
@@ -942,24 +983,25 @@ const dataInstructions = {
 };
 
 // execute a single instruction with ui updates
-function execute(instruction) {
+async function execute(instruction) {
     // highlight the instruction being executed
     highlightLine(cpu.regs.EIP);
 
     const handler = instructions[instruction.op];
-    if (handler)
-        handler(instruction.args);
+    if (handler) {
+        await handler(instruction.args);
+    }
 }
 
 // execute one instruction, incrementing eip if no jump occurred
-function step() {
+async function step() {
     if (cpu.regs.EIP >= executableLines.length)
         return;
 
     const currentInstruction = executableLines[cpu.regs.EIP];
     const eipBefore = cpu.regs.EIP;
 
-    execute(currentInstruction);
+    await execute(currentInstruction);
 
     // if instruction didn't set eip (no jump), increment it
     if (cpu.regs.EIP === eipBefore)
@@ -970,13 +1012,14 @@ function step() {
 }
 
 // run the program with optional delay between instructions
-function run(delay) {
-    const executionTimer = setInterval(() => {
-        step();
-        if (cpu.regs.EIP >= executableLines.length) {
-            clearInterval(executionTimer);
-            isRunning = false;
-            document.querySelector("#btn-run").disabled = false;
-        }
-    }, delay);
+async function run(delay) {
+
+    // while not at end of program execute 
+    while (cpu.regs.EIP < executableLines.length) {
+        await step();
+
+        // start delay timer 
+        await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    isRunning = false;
 }

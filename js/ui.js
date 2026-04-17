@@ -1,25 +1,30 @@
-// code editor
-const editor = CodeMirror.fromTextArea(document.getElementById("code-input"), {
-    mode: "asm",
-    theme: "custom",
-    autoCloseBrackets: true,
-    styleActiveLine: true,
-    matchBrackets: true,
-    lineNumbers: true,
+// initialize so other functions can use it later
+let editor;
+
+// wait until page is fully loaded
+document.addEventListener("DOMContentLoaded", () => {
+    editor = CodeMirror.fromTextArea(document.getElementById("code-input"), {
+        mode: "asm",
+        theme: "custom",
+        autoCloseBrackets: true,
+        styleActiveLine: true,
+        matchBrackets: true,
+        lineNumbers: true,
+    });
+
+    // test program
+    editor.setValue(
+        `section .data
+    msg db "Hello, x86!", 0
+        
+    section .text
+    print "Address of msg: "
+    println msg
+    print "Value of msg: "
+    print [msg]`
+    );
+        
 });
-
-// test program
-
-editor.setValue(
-`section .data
-msg db "Hello, x86", 0
-
-section .text
-print "Address of msg: "
-println msg
-print "Value of msg: "
-print [msg]`
-);
 
 // speed slider
 const speedSlider = document.getElementById("speed-slider");
@@ -57,20 +62,25 @@ function reset() {
         highlightedLine = null;
     }
 
-    executableIndex = [];
+    executableLines = [];
     updateUIRegisters();
     updateUIFlags();
 
     document.getElementById("log-output").value = "";
 }
 
-document.getElementById("btn-run").addEventListener("click", () => {
+document.getElementById("btn-run").addEventListener("click", async () => {
     // if already running, just stop and reset
     if (isRunning) {
         reset();
         isRunning = false;
+        editor.setOption("readOnly", false);
         return;
     }
+
+    editor.setOption("readOnly", true);
+
+    editor.getInputField().blur();
 
     reset();
 
@@ -87,10 +97,11 @@ document.getElementById("btn-run").addEventListener("click", () => {
     loadProgram(editor.getValue());
 
     if (speedSlider.value == "0") {
-        run(0);
+        await run(0.01);
     } else {
-        run(speedSlider.value);
+        await run(speedSlider.value);
     }
+    editor.setOption("readOnly", false);
 });
 
 document.getElementById("btn-step").addEventListener("click", () => {
@@ -116,7 +127,7 @@ document.getElementById("btn-reset").addEventListener("click", reset);
 
 // registers shown in the main panel
 const MAIN_REGISTER_NAMES = [
-    "EAX", "EIP", "EBX", "ESP", "ECX", "EBP", "EDX", "ESI"
+    "EAX", "EIP", "EBX", "ESP", "ECX", "EBP", "EDX", "ST0"
 ];
 
 // makes an unsigned integer signed (can go negative)
@@ -130,9 +141,9 @@ function toSigned(val) {
 
 function updateUIRegisters() {
     for (const reg of MAIN_REGISTER_NAMES) {
-        const el = document.getElementById("reg-" + reg);
-        if (el)
-            el.querySelector(".reg-value").textContent = toSigned(cpu.regs[reg]);
+        const element = document.getElementById("reg-" + reg);
+        if (element)
+            element.querySelector(".reg-value").textContent = toSigned(cpu.regs[reg]);
     }
 
     // if the popup is open, keep it in sync too
@@ -183,6 +194,54 @@ function log(message, isError = false, newLine = false) {
 
     // keeps it scrolled to the newest message
     logOutput.scrollTop = logOutput.scrollHeight;
+}
+
+// async that waits for user input via the textarea
+async function waitForInput() {
+    const textarea = document.getElementById("log-output");
+    textarea.removeAttribute("readonly");
+    textarea.focus();
+
+    // know where to start
+    let inputStartPos = 0;
+    inputStartPos = textarea.value.length;
+
+    // set cursor to the end
+    textarea.setSelectionRange(inputStartPos, inputStartPos);
+
+    return new Promise(resolve => {
+        function onKeyDown(e) {
+            // if enter key
+            if (e.key === "Enter") {
+                // prevents typing a newline
+                e.preventDefault();
+
+                const input = textarea.value.slice(inputStartPos).trim();
+                textarea.setAttribute("readonly", true);
+                textarea.removeEventListener("keydown", onKeyDown);
+                textarea.removeEventListener("keyup", guardCursor);
+                textarea.removeEventListener("click", guardCursor);
+                log("\n"); // append a newline after input
+                resolve(input);
+            }
+
+            // prevent backspace if it would remove old text
+            if (e.key === "Backspace" && textarea.selectionStart <= inputStartPos) {
+                e.preventDefault();
+            }
+        }
+
+        function guardCursor() {
+            // if cursor moves before the input start, move it back
+            if (textarea.selectionStart < inputStartPos) {
+                textarea.setSelectionRange(inputStartPos, inputStartPos);
+            }
+        }
+
+        textarea.addEventListener("keydown", onKeyDown);
+        textarea.addEventListener("keyup", guardCursor);
+        textarea.addEventListener("click", guardCursor);
+    });
 }
 
 /* extra registers popup */
