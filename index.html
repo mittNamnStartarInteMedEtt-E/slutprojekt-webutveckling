@@ -6,10 +6,11 @@
     <link rel="icon" type="image/x-icon" href="img/icon.png">
     <link rel="stylesheet" href="css/index.css">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Small x86 Assembly language emulator written in JavaScript, ade for a school project.">
     <script src="js/asm.js" defer></script>
     <script src="js/ui.js" defer></script>
 
-    <!-- import codemirror (for better textarea) -->    
+    <!-- import codemirror (better textarea) -->    
     <link rel="stylesheet" href="lib/codemirror/main/codemirror.css" defer>
     <script src="lib/codemirror/main/codemirror.js" defer></script>
     <!-- codemirror addons -->
@@ -20,7 +21,7 @@
 </head>
 
 <body>
-    <div class="app">
+    <main class="app">
         <div class="editor-panel">
             <h1>ASSEMBLY PLAYGROUND</h1>
             <div class="toolbar">
@@ -31,6 +32,12 @@
                 <button id="btn-run">RUN</button>
                 <button id="btn-step">STEP</button>
                 <button id="btn-reset">STOP</button>
+                <select id="examples-select">
+                    <option value="">EXAMPLES</option>
+                    <option value="0">Calculator</option>
+                    <option value="1">Fibonacci</option>
+                    <option value="2">Hello, world!</option>
+                </select>
             </div>
             <textarea id="code-input"></textarea>
         </div>
@@ -39,7 +46,7 @@
             <div class="registers-panel">
                 <div class="registers-header">
                     <h2>REGISTERS</h2>
-                    <button id="btn-show-regs" class="btn-all-regs">Show all</button>
+                    <button id="btn-show-regs" class="btn-all-regs">SHOW ALL</button>
                     <a href="docs.html" id="btn-help">DOCUMENTATION</a>
                 </div>
                 <div class="registers-grid">
@@ -99,7 +106,7 @@
             </div>
             <div id="reg-popup-body"></div>
         </div>
-    </div>
+    </main>
 </body>
 
 </html>

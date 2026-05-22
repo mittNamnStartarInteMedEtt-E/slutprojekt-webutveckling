@@ -5,15 +5,16 @@
     <title>Assembly Playground - Help</title>
     <link rel="icon" type="image/x-icon" href="img/icon.png">
     <link rel="stylesheet" href="css/docs.css">
-    <script src="js/docs.js" defer></script>
-
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Documentation with examples for my x86 Assembly language emulator.">
+    <script src="js/docs.js" defer></script>
+    
     <!-- import google font -->
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
 </head>
 
 <body>
-    <div class="page">
+    <main class="page">
         <div class="sidebar">
             <h1>ASM PLAYGROUND</h1>
             <a href="index.html">Back to Playground</a>
@@ -30,6 +31,7 @@
             <a href="#bitwise">Bitwise</a>
             <a href="#jumps">Jumps</a>
             <a href="#stack">Stack and calls</a>
+            <a href="#input">Input</a>
             <a href="#misc">Misc</a>
             <a href="#syntax">Syntax</a>
         </div>
@@ -176,7 +178,7 @@
             <div class="section" id="memory">
                 <h2>Memory</h2>
                 <p>
-                    The simulator has 1MB of memory. (Indexing starts at <span class="hex">0x100</span>) You access it by wrapping an
+                    The simulator has 1MB of memory. (Indexing starts at <span class="hex">0x100</span>, <span class="num">256</span> in decimal) You access it by wrapping an
                     address in square brackets.
                 </p>
                 <div class="code">
@@ -193,6 +195,9 @@
                 <p class="note">
                     *note: reads and writes are (almost) always 32-bit (4 bytes at
                     once). writing to address 0x100 also changes 0x101, 0x102 and 0x103.
+                </p>
+                <p class="note">
+                    *note: the input buffer is stored at memory address 0x2000, strings from inputs like reads get stored here temporarily.
                 </p>
             </div>
             <!-- sections -->
@@ -701,6 +706,47 @@
                     <div><span class="keyword">ret</span></div>
                 </div>
             </div>
+            <!-- input -->
+            <div class="section" id="input">
+                <h2>Input</h2>
+                <div class="row">
+                    <div class="op">readi</div>
+                    <div>reads an integer from the terminal into a register. defaults to ebp if no argument given</div>
+                    <div>
+                        <span class="keyword">readi</span> <span class="reg">eax</span><br>
+                        <span class="keyword">readi</span>
+                        <span class="comment">; result goes into ebp</span>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">readfl</div>
+                    <div>reads a float from the terminal into a float register or memory location. defaults to st0</div>
+                    <div>
+                        <span class="keyword">readfl</span> <span class="reg">st0</span><br>
+                        <span class="keyword">readfl</span> [<span class="reg">result</span>]
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">reads</div>
+                    <div>reads a string from the terminal and stores it at a fixed buffer address (<span class="hex">0x20000</span>), then writes that address into the destination</div>
+                    <div>
+                        <span class="keyword">reads</span> <span class="reg">eax</span><br>
+                        <span class="keyword">println</span> [<span class="reg">eax</span>]
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="op">readc</div>
+                    <div>reads a single character from the terminal and stores it at <span class="hex">0x2000</span></div>
+                    <div>
+                        <span class="keyword">readc</span> <span class="reg">eax</span>
+                    </div>
+                </div>
+                <p class="note">
+                    *note: if the input cant be parsed as a number, readi and readfl store 0 instead.
+                    all read instructions pause execution until input is submitted.
+                    strings written by reads are null-terminated.
+                </p>
+            </div>
             <!-- misc -->
             <div class="section" id="misc">
                 <h2>Misc</h2>
@@ -807,8 +853,11 @@
                     fine.
                 </p>
             </div>
+            <footer>
+                © 2026 Elias. All Rights Reserved.
+            </footer>
         </div>
-    </div>
+    </main>
 </body>
 
 </html>

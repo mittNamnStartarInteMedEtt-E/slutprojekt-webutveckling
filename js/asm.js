@@ -283,23 +283,40 @@ function preprocessCode(code) {
 
 // tokenize and parse a single assembly line into operation and arguments
 function parseLine(line) {
-    // remove comments
     line = line.split(";")[0].trim();
     if (line === "") return null;
 
     const tokens = line.split(" ");
     const opcode = tokens[0].toUpperCase();
-    let operands = tokens.slice(1).join(" ").split(", ").map(a => a.trim());
+    const rawOperands = tokens.slice(1).join(" ");
 
-    // preserve string literals (dont uppercase quoted strings)
-    operands = operands.map(operand => {
+    // split on commas but not inside strings
+    const operands = [];
+    let current = "";
+    let inString = false;
+
+    for (const char of rawOperands) {
+        if (char === '"' || char === "'") {
+            inString = !inString;
+            current += char;
+        } else if (char === "," && !inString) {
+            operands.push(current.trim());
+            current = "";
+        } else {
+            current += char;
+        }
+    }
+    if (current.trim() !== "") operands.push(current.trim());
+
+    // uppercase everything except string literals
+    const finalOperands = operands.map(operand => {
         if (operand.startsWith('"') && operand.endsWith('"') ||
             operand.startsWith("'") && operand.endsWith("'"))
             return operand;
         return operand.toUpperCase();
     });
 
-    return { raw: line.toUpperCase(), op: opcode, args: operands };
+    return { raw: line.toUpperCase(), op: opcode, args: finalOperands };
 }
 
 // parse and load program into memory, extract labels and build instruction list
@@ -382,18 +399,14 @@ function validate(code) {
         if (printOps.includes(instruction.op)) {
             const arg = instruction.args[0];
 
-            // check printc 
             if (instruction.op === "PRINTC") {
-                if (!arg.startsWith("'") && !arg.endsWith("'")) {
-                    if (arg.split(1, -1).length() !== 1) {
-                        errorList.push(`line ${instruction.sourceLine + 1}: PRINTC expects a single char, never 'char'`)
-                    } else {
-                        errorList.push(`line ${instruction.sourceLine + 1}: PRINTC expects a char in single quotes, like 'c'`);
-                    }
+                if (!arg.startsWith("'") && !arg.endsWith("'") || arg.length !== 3) {
+                    errorList.push(`line ${instruction.sourceLine + 1}: PRINTC expects a char in single quotes, like 'c'`);
                 }
             } else if (instruction.op === "PRINTS") {
-                if (!arg.startsWith('"') && !arg.endsWith('"')) {
-                    errorList.push(`line ${instruction.sourceLine + 1}: PRINTS expects a string in double quotes, like "hello"`);
+                if (!arg.startsWith('"') && !arg.endsWith('"') && 
+                   !(arg.startsWith('[') && arg.endsWith(']'))) {
+                    errorList.push(`line ${instruction.sourceLine + 1}: PRINTS expects a string or memory reference like "hello" or [var]`);
                 }
             } else if (instruction.op === "PRINTI") {
                 if (arg.includes(".")) {
@@ -406,10 +419,10 @@ function validate(code) {
                 if (!isRegister && !isMemRef && !isFloat)
                     errorList.push(`line ${instruction.sourceLine + 1}: PRINTFL expects a float, like 3.14`);
             }
-            return; // skip argument validation for prints
+            return; // skip argument validation for print instructions
         }
 
-        // check argument validity
+        // check if argument is valid
         instruction.args.forEach(arg => {
             if (!isValidArg(arg))
                 errorList.push(`line ${instruction.sourceLine + 1}: invalid argument '${arg}'`);
@@ -480,12 +493,19 @@ function resolvePrintVal(val) {
             // float
             return readFloat64(resolveVal(varName));
         } else {
-            return read32(resolveVal(varName));
+            // pointer to null-terminated string
+            let addr = resolveVal(varName);
+            let str = "";
+            while (memory[addr] !== 0)
+                str += String.fromCharCode(memory[addr++]);
+            return str;
         }
+        // char
     } else if (val.startsWith('"') && val.endsWith('"') ||
-               val.startsWith("'") && val.startsWith("'")) {
+               val.startsWith("'") && val.endsWith("'")) {
         return val.slice(1, -1).replace(/\\n/g, "\n");
     } else {
+        // hex
         const resolved = resolveVal(val);
         if (typeof resolved === "number" && dataAddresses[val] !== undefined) {
             return "0x" + resolved.toString(16).toUpperCase();
@@ -916,12 +936,16 @@ const instructions = {
 
     // same as READI but for floats
     async READFL(args) {
-        const dest = args[0] || "EBP";
+        const dest = args[0] || "ST0";
         const input = await waitForInput();
-        let val = Number(input);
-
-        // if NaN then 0
-        val = isNaN(val) ? 0 : val;
+        
+        // if NaN return 0
+        let val = isNaN(Number(input)) ? 0 : Number(input);
+    
+        // decrement pointer
+        if (!args[0]) {
+            cpu.fpuTop = (cpu.fpuTop - 1) & 7;
+        }
         writeFloatDst(dest, val);
     },
 

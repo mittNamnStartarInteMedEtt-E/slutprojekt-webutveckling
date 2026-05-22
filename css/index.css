@@ -103,6 +103,7 @@ body {
 
 .toolbar {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 8px;
 	margin-bottom: 16px;
 }
@@ -132,6 +133,16 @@ button:hover,
 #btn-help:hover {
 	color: var(--accent-dark);
 	border-color: var(--accent-dark);
+}
+
+#examples-select {
+    background: var(--panel);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 8px 16px;
+    font-family: monospace;
+    font-size: 16px;
+    cursor: pointer;
 }
 
 .speed-control {
@@ -182,6 +193,10 @@ button:hover,
 
 /* code editor */
 
+#code-input {
+    height: calc(100vh - 116px);
+}
+
 .CodeMirror {
 	height: calc(100vh - 116px) !important; /* !important needed because CodeMirror stylesheets are aggressive */
 	background: var(--bg) !important;
@@ -189,6 +204,7 @@ button:hover,
 	border: 1px solid var(--border);
 	font-size: 16px;
 	overflow: hidden;
+	
 }
 
 .CodeMirror-gutters {

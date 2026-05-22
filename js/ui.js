@@ -1,6 +1,80 @@
 // initialize so other functions can use it later
 let editor;
 
+const examples = [
+// calculator
+`section .data
+    prompt db "Enter a number: ", 0
+    prompt2 db "Enter another number: ", 0
+    op_prompt db "Operation (1=ADD 2=SUB 3=MUL 4=DIV): ", 0
+    result db "Result: ", 0
+
+section .text
+    prints [prompt]
+    readi eax
+    prints [prompt2]
+    readi ebx
+    prints [op_prompt]
+    readi ecx
+
+    cmp ecx, 1
+    je do_add
+    cmp ecx, 2
+    je do_sub
+    cmp ecx, 3
+    je do_mul
+    cmp ecx, 4
+    je do_div
+
+do_add:
+    add eax, ebx
+    jmp print_result
+do_sub:
+    sub eax, ebx
+    jmp print_result
+do_mul:
+    mul eax, ebx
+    jmp print_result
+do_div:
+    div eax, ebx
+
+print_result:
+    prints [result]
+    println eax`,
+
+// fibonacci
+`section .data
+    count dd 20 ; amount of fibonacci numbers
+
+section .text
+    mov eax, 0
+    mov ebx, 1
+    mov ecx, [count]
+
+.loop:
+    println eax
+    mov edx, ebx
+    add edx, eax
+    mov eax, ebx
+    mov ebx, edx
+    loop .loop`,
+
+// hello world
+`section .data
+    msg1 db "Hello, ", 0
+    msg2 db "World!", 0
+
+section .text
+    print [msg1]
+    println [msg2]
+    print "\\n"
+    
+    print "Address of 'msg1': "
+    println msg1
+    print "Address of 'msg2': "
+    println msg2`,
+];
+
 // wait until page is fully loaded
 document.addEventListener("DOMContentLoaded", () => {
     editor = CodeMirror.fromTextArea(document.getElementById("code-input"), {
@@ -11,19 +85,16 @@ document.addEventListener("DOMContentLoaded", () => {
         matchBrackets: true,
         lineNumbers: true,
     });
+    let selector = document.getElementById("examples-select");
+    editor.setValue(examples[2]);
+});
 
-    // test program
-    editor.setValue(
-        `section .data
-    msg db "Hello, x86!", 0
-        
-    section .text
-    print "Address of msg: "
-    println msg
-    print "Value of msg: "
-    print [msg]`
-    );
-        
+// example code selector
+document.getElementById("examples-select").addEventListener("change", e => {
+    if (!e.target.value) 
+        return;
+editor.setValue(examples[e.target.value]);
+    e.target.value = "";
 });
 
 // speed slider
@@ -55,6 +126,8 @@ function reset() {
     cpu.flags.SIGN = false;
     cpu.flags.OVERFLOW = false;
     cpu.fpuTop = 0;
+
+    editor.setOption("readOnly", false);
 
     // remove the highlighted line from the editor if there is one
     if (highlightedLine !== null) {
