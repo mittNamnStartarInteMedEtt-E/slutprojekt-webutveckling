@@ -8,7 +8,7 @@ A javascript-based Assembly emulator.
 - ``STEP`` execute one instruction at a time
 - ``STOP`` stops execution, resets everything, log, registers and flags to 0
 - ``DOCUMENTATION`` brings you to the documentation page
--
+- ``EXAMPLES`` shows a list of examples
 
 ## Usage
 Check out the documentation page [here](https://mittnamnstartarintemedett-e.github.io/slutprojekt-webutveckling/html/docs.html)
